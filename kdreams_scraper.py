@@ -1,0 +1,580 @@
+"""
+Kドリームス競輪スクレイピングモジュール
+requests + BeautifulSoup4を使用したHTTPベースのスクレイピング
+"""
+import requests
+from bs4 import BeautifulSoup
+import pandas as pd
+import time
+import re
+from typing import Dict, List, Tuple, Optional
+from datetime import datetime
+
+
+class KdreamsScraper:
+    """Kドリームスのスクレイピングクラス"""
+    
+    BASE_URL = "https://keirin.kdreams.jp"
+    
+    def __init__(self):
+        self.session = requests.Session()
+        self.session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        })
+    
+    def get_todays_races(self) -> List[Dict]:
+        """
+        当日開催のレース一覧を取得（全Grade）
+        
+        Returns:
+            レース情報のリスト [{"name": "熊本 1R", "url": "...", "grade": "GI"}]
+        """
+        try:
+            response = self.session.get(self.BASE_URL, timeout=10)
+            response.raise_for_status()
+            time.sleep(1)
+            
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            races = []
+            
+            # 開催レース一覧のセクションを探す (race_list クラス)
+            race_lists = soup.find_all('dl', class_='race_list')
+            
+            for race_list in race_lists:
+                # 競輪場名を取得
+                velodrome_elem = race_list.find('p', class_='velodrome')
+                if not velodrome_elem:
+                    continue
+                    
+                velodrome_name = velodrome_elem.get_text(strip=True)
+                
+                # Gradeアイコンを取得（テキストを直接読み取り）
+                grade_icon = race_list.find('li', class_=lambda c: c and 'icon_grade' in ' '.join(c) if isinstance(c, list) else False)
+                grade = "F級"  # デフォルト
+                if grade_icon:
+                    # アイコン内のテキストを取得（FⅠ、FⅡ、GⅢ、GⅡ、GⅠなど）
+                    grade_text = grade_icon.get_text(strip=True)
+                    if grade_text:
+                        grade = grade_text
+                
+                # 本日の開催セクションを探す (class="current")
+                current_div = race_list.find('div', class_='current')
+                if not current_div:
+                    continue
+                
+                # 出走表リンクを取得
+                racecard_link = current_div.find('a', href=lambda h: h and '/racecard/' in h)
+                if not racecard_link:
+                    continue
+                
+                race_url = racecard_link.get('href', '')
+                if race_url and not race_url.startswith('http'):
+                    race_url = self.BASE_URL.rstrip('/') + race_url
+                
+                # レース状態を取得 (例: "1R 投票受付中")
+                status_elem = current_div.find('span', class_='race')
+                race_status = status_elem.get_text(strip=True) if status_elem else ""
+                
+                # 締切時刻を取得
+                time_elem = current_div.find('span', class_='num')
+                race_time = time_elem.get_text(strip=True) if time_elem else ""
+                
+                # 日程情報を取得 (例: "初日", "2日目", "最終日")
+                day_elem = current_div.find('p', class_='day')
+                day_info = day_elem.get_text(strip=True) if day_elem else ""
+                
+                # レース情報を追加
+                races.append({
+                    'name': f"{velodrome_name} ({grade}) {day_info} - {race_status}",
+                    'url': race_url,
+                    'grade': grade,
+                    'velodrome': velodrome_name,
+                    'status': race_status,
+                    'time': race_time,
+                    'day': day_info
+                })
+            
+            # Gradeでソート（GⅠ > GⅡ > GⅢ > FⅠ > FⅡ > それ以外）
+            grade_order = {
+                'ＧⅠ': 1, 'GⅠ': 1, 'GI': 1,
+                'ＧⅡ': 2, 'GⅡ': 2, 'GII': 2,
+                'ＧⅢ': 3, 'GⅢ': 3, 'GIII': 3,
+                'ＦⅠ': 4, 'FⅠ': 4, 'FI': 4,
+                'ＦⅡ': 5, 'FⅡ': 5, 'FII': 5,
+                'F級': 9
+            }
+            races.sort(key=lambda x: grade_order.get(x['grade'], 10))
+            
+            print(f"取得したレース数: {len(races)}")
+            return races
+            
+        except Exception as e:
+            print(f"レース一覧取得エラー: {e}")
+            import traceback
+            traceback.print_exc()
+            return []
+    
+    def get_all_races_from_venue(self, racecard_url: str) -> List[Dict]:
+        """
+        開催場のracecardURLから全レース（1R-12R）のracedetail URLを生成
+        
+        Args:
+            racecard_url: 開催場の出走表URL (例: .../racecard/73202602050300/)
+            
+        Returns:
+            各レースの情報リスト [{"race_number": 1, "name": "1R", "url": "..."}]
+        """
+        try:
+            # racecardのURLから開催IDを抽出
+            # 例: https://keirin.kdreams.jp/komatsushima/racecard/73202602050300/
+            match = re.search(r'/racecard/(\d+)/', racecard_url)
+            if not match:
+                print(f"URLパターンが不正: {racecard_url}")
+                return []
+            
+            kaisai_id = match.group(1)  # 例: "73202602050300"
+            
+            # ベースURLを取得
+            base_url = racecard_url.split('/racecard/')[0]
+            
+            # 各レース（1R-12R）のURLを生成
+            races = []
+            for race_no in range(1, 13):  # 1R～12R
+                race_id = f"{kaisai_id}{race_no:02d}"  # 例: 7320260205030001
+                race_url = f"{base_url}/racedetail/{race_id}/"
+                races.append({
+                    'race_number': race_no,
+                    'name': f"{race_no}R",
+                    'url': race_url,
+                    'race_id': race_id
+                })
+            
+            print(f"生成したレース数: {len(races)}")
+            return races
+            
+        except Exception as e:
+            print(f"レースURL生成エラー: {e}")
+            import traceback
+            traceback.print_exc()
+            return []
+    
+    def get_race_card(self, race_url: str) -> pd.DataFrame:
+        """
+        出走表データを取得（racedetailページから23カラム・バリデーション付き）
+        
+        Args:
+            race_url: 出走表ページのURL (racecardでもracedetailでも可)
+            
+        Returns:
+            出走表のDataFrame (23カラム)
+        """
+        try:
+            # racecardのURLをracedetailに変換
+            if '/racecard/' in race_url:
+                parts = race_url.split('/racecard/')
+                if len(parts) == 2:
+                    base_url = parts[0]
+                    race_id = parts[1].rstrip('/')
+                    race_detail_url = f"{base_url}/racedetail/{race_id}01/"
+                    print(f"URL変換: racecard → racedetail")
+                else:
+                    race_detail_url = race_url
+            else:
+                race_detail_url = race_url
+            
+            response = self.session.get(race_detail_url, timeout=10)
+            response.raise_for_status()
+            time.sleep(1)
+            
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # 出走表テーブルを探す（class="racecard_table"）
+            table = soup.find('table', class_='racecard_table')
+            
+            if not table:
+                print("出走表テーブルが見つかりませんでした")
+                return pd.DataFrame()
+            
+            # 固定ヘッダー（19カラム - 予想、好気合、総評、枠番を除外）
+            headers = [
+                '車番', '選手名', '府県', '年齢', '期別',
+                '級班', '脚質', 'ギヤ倍数', '競走得点', 'S', 'B', 
+                '逃', '捲', '差', 'マ', '1着', '2着', '3着', '着外'
+            ]
+            
+            # データ行を抽出（class="n1", "n2", ... "n9"）
+            rows_data = []
+            for tr in table.find_all('tr'):
+                tr_class = tr.get('class', [])
+                # n1～n9のクラスを持つ行のみ処理
+                if not any(c.startswith('n') and len(c) == 2 and c[1:].isdigit() for c in tr_class):
+                    continue
+                
+                cells = tr.find_all('td')
+                row = {}  # 辞書形式で一時保存
+                
+                for td in cells:
+                    td_classes = td.get('class', [])
+                    
+                    # クラス名でセルを識別
+                    # 予想、好気合、総評、枠番のセルはスキップ
+                    if 'tip' in td_classes or 'kiai' in td_classes or 'evaluation' in td_classes or 'bracket' in td_classes:
+                        continue
+                    
+                    elif 'num' in td_classes:
+                        # 車番セル
+                        span = td.find('span')
+                        row['車番'] = span.get_text(strip=True) if span else td.get_text(strip=True)
+                    
+                    elif 'rider' in td_classes:
+                        # 選手名セル（特別処理: 選手名 + 府県/年齢/期別）
+                        html_content = str(td)
+                        html_content = html_content.replace('<br>', '\n').replace('<br/>', '\n')
+                        temp_soup = BeautifulSoup(html_content, 'html.parser')
+                        text = temp_soup.get_text()
+                        lines = [line.strip() for line in text.split('\n') if line.strip()]
+                        
+                        # 選手名（1行目）
+                        row['選手名'] = lines[0] if len(lines) > 0 else ''
+                        
+                        # 府県/年齢/期別（2行目）
+                        if len(lines) > 1:
+                            info_parts = lines[1].split('/')
+                            row['府県'] = info_parts[0].strip() if len(info_parts) > 0 else ''
+                            row['年齢'] = info_parts[1].strip() if len(info_parts) > 1 else ''
+                            row['期別'] = info_parts[2].strip() if len(info_parts) > 2 else ''
+                        else:
+                            row['府県'] = ''
+                            row['年齢'] = ''
+                            row['期別'] = ''
+                
+                # クラスなしセルを順番に処理（級班、脚質、ギヤ倍数、統計データ）
+                # クラスなしセルのインデックスを取得
+                classless_cells = []
+                for td in cells:
+                    td_classes = td.get('class', [])
+                    # 特定のクラスを持たないセル、またはbdr_rだけのセル
+                    if not td_classes or (len(td_classes) == 1 and 'bdr_r' in td_classes):
+                        span = td.find('span')
+                        text = span.get_text(strip=True) if span else td.get_text(strip=True)
+                        classless_cells.append(text)
+                
+                # クラスなしセルを順番にマッピング
+                # 期待順序: 級班、脚質、ギヤ倍数、競走得点、S、B、逃、捲、差、マ、1着、2着、3着、着外
+                cell_map = ['級班', '脚質', 'ギヤ倍数', '競走得点', 'S', 'B', '逃', '捲', '差', 'マ',
+                           '1着', '2着', '3着', '着外']
+                
+                for i, col_name in enumerate(cell_map):
+                    if i < len(classless_cells):
+                        row[col_name] = classless_cells[i]
+                    else:
+                        row[col_name] = ''
+                
+                # 19カラムすべてを含む行を作成（順序保証）
+                ordered_row = []
+                for header in headers:
+                    ordered_row.append(row.get(header, ''))
+                
+                if ordered_row:
+                    rows_data.append(ordered_row)
+            
+            if not rows_data:
+                print("データ行が見つかりませんでした")
+                return pd.DataFrame()
+            
+            # DataFrameを作成
+            df = pd.DataFrame(rows_data, columns=headers)
+            
+            # 数値変換（バリデーション付き）
+            # 車番: 1-9の整数
+            if '車番' in df.columns:
+                df['車番'] = pd.to_numeric(df['車番'], errors='coerce')
+                df.loc[(df['車番'] < 1) | (df['車番'] > 9), '車番'] = None
+            
+            # 年齢: 18-70の整数
+            if '年齢' in df.columns:
+                df['年齢'] = pd.to_numeric(df['年齢'], errors='coerce')
+                df.loc[(df['年齢'] < 18) | (df['年齢'] > 70), '年齢'] = None
+            
+            # 期別: 1-150の整数
+            if '期別' in df.columns:
+                df['期別'] = pd.to_numeric(df['期別'], errors='coerce')
+                df.loc[(df['期別'] < 1) | (df['期別'] > 150), '期別'] = None
+            
+            # その他の数値カラム（総評を除外）
+            numeric_cols = ['ギヤ倍数', '競走得点', 'S', 'B', '逃', '捲', '差', 'マ',
+                           '1着', '2着', '3着', '着外']
+            for col in numeric_cols:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col], errors='coerce')
+            
+            print(f"出走表データ: {len(df)}行 x {len(df.columns)}列取得")
+            return df
+            
+        except Exception as e:
+            print(f"出走表取得エラー: {e}")
+            import traceback
+            traceback.print_exc()
+            return pd.DataFrame()
+    
+    def get_line_prediction(self, race_url: str) -> str:
+        """
+        ライン予想（並び予想）を取得
+        
+        Args:
+            race_url: レース詳細ページのURL
+            
+        Returns:
+            ライン予想文字列（例: "123-45-6"）
+        """
+        try:
+            response = self.session.get(race_url, timeout=10)
+            response.raise_for_status()
+            time.sleep(1)
+            
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # 「並び予想」のセクションを探す
+            line_section = soup.find(text=re.compile(r'並び|ライン'))
+            
+            if line_section:
+                # 親要素から数字を抽出
+                parent = line_section.parent
+                if parent:
+                    numbers = re.findall(r'\d', parent.get_text())
+                    if numbers:
+                        # 連続する数字をグループ化（ヒューリスティック）
+                        return ''.join(numbers)
+            
+            # フォールバック: ページ全体から数字パターンを探す
+            text_content = soup.get_text()
+            line_match = re.search(r'(\d+[-‐]\d+[-‐]\d+)', text_content)
+            if line_match:
+                return line_match.group(1).replace('‐', '-')
+            
+            return ""
+            
+        except Exception as e:
+            print(f"ライン予想取得エラー: {e}")
+            return ""
+    
+    def get_3rentan_odds(self, race_url: str) -> pd.DataFrame:
+        """
+        3連単オッズを取得
+        
+        Args:
+            race_url: レース詳細ページのURL
+            
+        Returns:
+            3連単オッズのDataFrame (1着,2着,3着,オッズ)
+        """
+        try:
+            # オッズページのURLを構築
+            if '/racedetail/' in race_url:
+                odds_url = race_url.rstrip('/') + '/odds/3rentan/'
+            else:
+                odds_url = race_url
+            
+            response = self.session.get(odds_url, timeout=10)
+            response.raise_for_status()
+            time.sleep(1)
+            
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # オッズテーブルを探す
+            odds_data = []
+            
+            # パターン1: テーブル形式
+            tables = soup.find_all('table')
+            for table in tables:
+                rows = table.find_all('tr')
+                for row in rows:
+                    cells = row.find_all(['td', 'th'])
+                    cell_texts = [c.get_text(strip=True) for c in cells]
+                    
+                    # 3連単パターンを探す（1-2-3形式または別々のセル）
+                    if len(cell_texts) >= 4:
+                        # 数字を抽出
+                        numbers = []
+                        for text in cell_texts:
+                            nums = re.findall(r'\d+', text)
+                            numbers.extend(nums)
+                        
+                        if len(numbers) >= 4:
+                            # 最後が小数点を含む可能性があるオッズ値
+                            try:
+                                odds_value = float(numbers[3]) if '.' in cell_texts[-1] else float(numbers[3])
+                                odds_data.append({
+                                    '1着': int(numbers[0]),
+                                    '2着': int(numbers[1]),
+                                    '3着': int(numbers[2]),
+                                    'オッズ': odds_value
+                                })
+                            except (ValueError, IndexError):
+                                continue
+            
+            if odds_data:
+                df = pd.DataFrame(odds_data)
+                return df
+            
+            return pd.DataFrame(columns=['1着', '2着', '3着', 'オッズ'])
+            
+        except Exception as e:
+            print(f"3連単オッズ取得エラー: {e}")
+            return pd.DataFrame(columns=['1着', '2着', '3着', 'オッズ'])
+    
+    def get_race_results(self, race_url: str) -> pd.DataFrame:
+        """
+        レース結果詳細を取得
+        
+        Args:
+            race_url: レース詳細ページのURL
+            
+        Returns:
+            レース結果のDataFrame (着順,車番,選手名,着差,上がり,決まり手,S/B)
+        """
+        try:
+            # 結果ページのURLを構築（?pageType=result パラメータを追加）
+            if '?' in race_url:
+                results_url = race_url + '&pageType=result'
+            else:
+                results_url = race_url.rstrip('/') + '/?pageType=result'
+            
+            print(f"結果ページURL: {results_url}")
+            
+            response = self.session.get(results_url, timeout=10)
+            response.raise_for_status()
+            time.sleep(1)
+            
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # result_tableクラスのテーブルを探す
+            result_table = soup.find('table', class_='result_table')
+            
+            if not result_table:
+                print("結果テーブルが見つかりません")
+                return pd.DataFrame(columns=['着順', '車番', '選手名', '着差', '上がり', '決まり手', 'S/B'])
+            
+            # データ行を取得
+            tbody = result_table.find('tbody')
+            if tbody:
+                data_rows = tbody.find_all('tr')
+            else:
+                # tbody がない場合は直接 tr を取得（ヘッダーをスキップ）
+                data_rows = result_table.find_all('tr')[1:]
+            
+            results = []
+            
+            for row in data_rows:
+                cells = row.find_all('td')
+                
+                if len(cells) > 0:
+                    # インデックスベースでセルを取得
+                    # HTML構造: tip(予想), 着順, num(車番), rider(選手名), 着差, 上がり, 決まり手, S/B, comment(勝敗因)
+                    
+                    chakujun_num = ''
+                    shaban = ''
+                    senshu = ''
+                    chakusa = ''
+                    agari = ''
+                    kimarite = ''
+                    sb = ''
+                    
+                    # 各セルを順番に処理
+                    for i, td in enumerate(cells):
+                        td_classes = td.get('class', [])
+                        text = td.get_text(strip=True)
+                        
+                        # クラスベースで特定できるセル
+                        if 'tip' in td_classes:
+                            # 予想マーク - スキップ（位置: 0）
+                            continue
+                        elif 'num' in td_classes:
+                            # 車番（位置: 2）
+                            shaban = text
+                        elif 'rider' in td_classes:
+                            # 選手名（位置: 3）
+                            senshu = text
+                        elif 'comment' in td_classes:
+                            # コメント（位置: 8） - スキップ
+                            continue
+                    
+                    # 位置ベースで通常セルを取得（クラスなしのtd）
+                    # インデックスを数えて正確に割り当て
+                    normal_cell_index = 0
+                    for i, td in enumerate(cells):
+                        td_classes = td.get('class', [])
+                        
+                        # 特殊クラスを持つセルはスキップ
+                        if any(cls in td_classes for cls in ['tip', 'num', 'rider', 'comment']):
+                            continue
+                        
+                        text = td.get_text(strip=True)
+                        
+                        # 通常セルの順序: 着順(0), 着差(1), 上がり(2), 決まり手(3), S/B(4)
+                        if normal_cell_index == 0:
+                            chakujun_num = text
+                        elif normal_cell_index == 1:
+                            chakusa = text
+                        elif normal_cell_index == 2:
+                            agari = text
+                        elif normal_cell_index == 3:
+                            kimarite = text
+                        elif normal_cell_index == 4:
+                            sb = text
+                        
+                        normal_cell_index += 1
+                    
+                    # 結果データを構築
+                    result_data = {
+                        '着順': chakujun_num,
+                        '車番': shaban,
+                        '選手名': senshu,
+                        '着差': chakusa,
+                        '上がり': agari,
+                        '決まり手': kimarite,
+                        'S/B': sb,
+                    }
+                    
+                    results.append(result_data)
+            
+            if results:
+                df = pd.DataFrame(results)
+                print(f"取得した結果数: {len(df)}")
+                return df
+            
+            return pd.DataFrame(columns=['着順', '車番', '選手名', '着差', '上がり', '決まり手', 'S/B'])
+            
+        except Exception as e:
+            print(f"レース結果取得エラー: {e}")
+            import traceback
+            traceback.print_exc()
+            return pd.DataFrame(columns=['着順', '車番', '選手名', '着差', '上がり', '決まり手', 'S/B'])
+    
+    def get_all_race_data(self, race_url: str) -> Tuple[pd.DataFrame, str, pd.DataFrame]:
+        """
+        1つのレースの全データを取得
+        
+        Args:
+            race_url: レース詳細ページのURL
+            
+        Returns:
+            (出走表DataFrame, ライン予想str, 3連単オッズDataFrame)
+        """
+        print(f"データ取得中: {race_url}")
+        
+        race_card = self.get_race_card(race_url)
+        line_prediction = self.get_line_prediction(race_url)
+        odds_3rentan = self.get_3rentan_odds(race_url)
+        
+        return race_card, line_prediction, odds_3rentan
+
+
+if __name__ == "__main__":
+    # テスト実行
+    scraper = KdreamsScraper()
+    races = scraper.get_todays_races()
+    print(f"本日のS級レース: {len(races)}件")
+    for race in races[:5]:
+        print(f"  - {race['name']}")
