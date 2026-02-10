@@ -99,12 +99,12 @@ def main():
                 with st.spinner("データを取得中... (20〜30秒かかります)"):
                     race_card = st.session_state.scraper.get_race_card(selected_race['url'])
                     race_results = st.session_state.scraper.get_race_results(selected_race['url'])
-                    odds_3rentan = st.session_state.scraper.get_3rentan_odds(selected_race['url'])
+                    odds_data = st.session_state.scraper.get_odds(selected_race['url'], 'popular')
                 
                 st.session_state.race_data = {
                     'race_card': race_card,
                     'race_results': race_results,
-                    'odds_3rentan': odds_3rentan,
+                    'odds': odds_data,
                     'race_name': selected_race['name'],
                     'race_url': selected_race['url']
                 }
@@ -121,7 +121,7 @@ def main():
         st.header(f"📊 {data['race_name']} - データ")
         
         # タブで切り替え
-        tab1, tab2, tab3 = st.tabs(["🏁 出走表", "🏆 レース結果", "💰 3連単オッズ"])
+        tab1, tab2, tab3 = st.tabs(["🏁 出走表", "🏆 レース結果", "💰 オッズ (人気順)"])
         
         # タブ1: 出走表
         with tab1:
@@ -183,47 +183,35 @@ def main():
             else:
                 st.info("レース結果がまだ確定していないか、データが取得できませんでした")
         
-        # タブ3: 3連単オッズ
+        # タブ3: オッズ（人気順）
         with tab3:
-            st.subheader("3連単オッズ（全504通り）")
-            if 'odds_3rentan' in data and not data['odds_3rentan'].empty:
-                st.markdown(f"**オッズ組合せ数:** {len(data['odds_3rentan'])}通り")
-                
-                # オッズが低い順にソート
-                df_sorted = data['odds_3rentan'].sort_values('オッズ', ascending=True)
-                
-                # 人気上位20組合せを表示
-                st.markdown("#### 🔥 人気上位20組合せ（オッズが低い順）")
-                st.dataframe(df_sorted.head(20), use_container_width=True, height=300)
-                
-                # 全データ表示（折りたたみ）
-                with st.expander("📊 全504通りのオッズを表示"):
-                    st.dataframe(df_sorted, use_container_width=True, height=500)
+            st.subheader("オッズデータ（人気順 50通り）")
+            if 'odds' in data and not data['odds'].empty:
+                st.markdown(f"**取得オッズ数:** {len(data['odds'])}通り")
+                st.dataframe(data['odds'], use_container_width=True, height=400)
                 
                 # CSVダウンロードとコピー用データ準備
                 csv_buffer = io.StringIO()
-                df_sorted.to_csv(csv_buffer, index=False, encoding='utf-8-sig')
+                data['odds'].to_csv(csv_buffer, index=False, encoding='utf-8-sig')
                 csv_data = csv_buffer.getvalue()
                 
                 col1, col2 = st.columns(2)
                 with col1:
                     st.download_button(
-                        label="📥 CSVダウンロード（全データ）",
+                        label="📥 CSVダウンロード",
                         data=csv_data,
-                        file_name=f"{data['race_name']}_3連単オッズ.csv",
+                        file_name=f"{data['race_name']}_オッズ.csv",
                         mime="text/csv",
                         use_container_width=True
                     )
                 
-                # 人気上位20組合せのみコピー用表示
+                # コピー用のCSV表示（コピーボタン付き）
                 with col2:
-                    with st.expander("📋 人気上位20をコピー（CSV形式）"):
+                    with st.expander("📋 表をコピー（CSV形式）"):
                         st.caption("下のボックス右上のコピーアイコンをクリックしてコピーできます")
-                        csv_top20_buffer = io.StringIO()
-                        df_sorted.head(20).to_csv(csv_top20_buffer, index=False, encoding='utf-8-sig')
-                        st.code(csv_top20_buffer.getvalue(), language="csv")
+                        st.code(csv_data, language="csv")
             else:
-                st.info("3連単オッズが取得できませんでした")
+                st.warning("⚠️ オッズデータが取得できませんでした。オッズページがJavaScriptで動的に読み込まれる場合、通常のHTTPリクエストでは取得できないことがあります。")
         
         # 全データ統合ダウンロード
         st.markdown("---")
@@ -257,7 +245,7 @@ def main():
             「データを取得」ボタンをクリックすると、以下のデータがスクレイピングされます：
             - **出走表**: 19カラムの詳細データ  
             - **レース結果**: 着順、車番、選手名、着差、上がり、決まり手、S/B
-            - **3連単オッズ**: 全504通りの組合せとオッズ（人気上位20組合せをハイライト表示）
+            - **オッズ（人気順）**: 3連単オッズ 人気順50通り（順位、組み合わせ、オッズ）
             
             ### ステップ4: データのダウンロード
             各タブでデータをプレビュー確認し、CSVファイルとしてダウンロードまたはコピーできます。

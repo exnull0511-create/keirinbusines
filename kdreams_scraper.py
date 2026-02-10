@@ -22,9 +22,12 @@ class KdreamsScraper:
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         })
     
-    def get_todays_races(self) -> List[Dict]:
+    def get_races(self, date_type: str = "today") -> List[Dict]:
         """
-        当日開催のレース一覧を取得（全Grade）
+        指定日のレース一覧を取得
+        
+        Args:
+            date_type: "today" (本日) または "yesterday" (前日)
         
         Returns:
             レース情報のリスト [{"name": "熊本 1R", "url": "...", "grade": "GI"}]
@@ -49,53 +52,77 @@ class KdreamsScraper:
                     
                 velodrome_name = velodrome_elem.get_text(strip=True)
                 
-                # Gradeアイコンを取得（テキストを直接読み取り）
+                # Gradeアイコンを取得
                 grade_icon = race_list.find('li', class_=lambda c: c and 'icon_grade' in ' '.join(c) if isinstance(c, list) else False)
-                grade = "F級"  # デフォルト
+                grade = "F級"
                 if grade_icon:
-                    # アイコン内のテキストを取得（FⅠ、FⅡ、GⅢ、GⅡ、GⅠなど）
                     grade_text = grade_icon.get_text(strip=True)
                     if grade_text:
                         grade = grade_text
                 
-                # 本日の開催セクションを探す (class="current")
-                current_div = race_list.find('div', class_='current')
-                if not current_div:
-                    continue
-                
-                # 出走表リンクを取得
-                racecard_link = current_div.find('a', href=lambda h: h and '/racecard/' in h)
-                if not racecard_link:
-                    continue
-                
-                race_url = racecard_link.get('href', '')
-                if race_url and not race_url.startswith('http'):
-                    race_url = self.BASE_URL.rstrip('/') + race_url
-                
-                # レース状態を取得 (例: "1R 投票受付中")
-                status_elem = current_div.find('span', class_='race')
-                race_status = status_elem.get_text(strip=True) if status_elem else ""
-                
-                # 締切時刻を取得
-                time_elem = current_div.find('span', class_='num')
-                race_time = time_elem.get_text(strip=True) if time_elem else ""
-                
-                # 日程情報を取得 (例: "初日", "2日目", "最終日")
-                day_elem = current_div.find('p', class_='day')
-                day_info = day_elem.get_text(strip=True) if day_elem else ""
+                # 日付タイプに応じてセクションを選択
+                if date_type == "yesterday":
+                    # 前日: rPrev内のリンクを探す
+                    target_section = race_list.find('ul', class_='rPrev')
+                    if not target_section:
+                        continue
+                    
+                    # 結果リンクを探す（class="res"）
+                    result_link = target_section.find('a', class_='res')
+                    if not result_link:
+                        continue
+                    
+                    race_url = result_link.get('href', '')
+                    if race_url and not race_url.startswith('http'):
+                        race_url = self.BASE_URL.rstrip('/') + race_url
+                    
+                    # 日程情報
+                    day_elem = target_section.find('li')
+                    day_info = day_elem.get_text(strip=True) if day_elem else ""
+                    
+                    race_status = "結果"
+                    race_time = ""
+                    
+                else:  # today
+                    # 本日: 元のロジックを使用（currentクラス）
+                    current_div = race_list.find('div', class_='current')
+                    if not current_div:
+                        continue
+                    
+                    # 出走表リンクを取得
+                    racecard_link = current_div.find('a', href=lambda h: h and ('/racecard/' in h or '/AllRaceList.do' in h))
+                    if not racecard_link:
+                        continue
+                    
+                    race_url = racecard_link.get('href', '')
+                    if race_url and not race_url.startswith('http'):
+                        race_url = self.BASE_URL.rstrip('/') + race_url
+                    
+                    # レース状態を取得
+                    status_elem = current_div.find('span', class_='race')
+                    race_status = status_elem.get_text(strip=True) if status_elem else ""
+                    
+                    # 締切時刻を取得
+                    time_elem = current_div.find('span', class_='num')
+                    race_time = time_elem.get_text(strip=True) if time_elem else ""
+                    
+                    # 日程情報を取得
+                    day_elem = current_div.find('p', class_='day')
+                    day_info = day_elem.get_text(strip=True) if day_elem else ""
                 
                 # レース情報を追加
                 races.append({
-                    'name': f"{velodrome_name} ({grade}) {day_info} - {race_status}",
+                    'name': f"{velodrome_name} ({grade}) {day_info}",
                     'url': race_url,
                     'grade': grade,
                     'velodrome': velodrome_name,
                     'status': race_status,
                     'time': race_time,
-                    'day': day_info
+                    'day': day_info,
+                    'date_type': date_type
                 })
             
-            # Gradeでソート（GⅠ > GⅡ > GⅢ > FⅠ > FⅡ > それ以外）
+            # Gradeでソート
             grade_order = {
                 'ＧⅠ': 1, 'GⅠ': 1, 'GI': 1,
                 'ＧⅡ': 2, 'GⅡ': 2, 'GII': 2,
@@ -106,14 +133,24 @@ class KdreamsScraper:
             }
             races.sort(key=lambda x: grade_order.get(x['grade'], 10))
             
-            print(f"取得したレース数: {len(races)}")
+            print(f"取得したレース数 ({date_type}): {len(races)}")
             return races
             
         except Exception as e:
-            print(f"レース一覧取得エラー: {e}")
+            print(f"レース一覧取得エラー ({date_type}): {e}")
             import traceback
             traceback.print_exc()
             return []
+    
+    
+    def get_todays_races(self) -> List[Dict]:
+        """
+        当日開催のレース一覧を取得（後方互換性のため）
+        
+        Returns:
+            レース情報のリスト
+        """
+        return self.get_races("today")
     
     def get_all_races_from_venue(self, racecard_url: str) -> List[Dict]:
         """
@@ -423,6 +460,78 @@ class KdreamsScraper:
         except Exception as e:
             print(f"3連単オッズ取得エラー: {e}")
             return pd.DataFrame(columns=['1着', '2着', '3着', 'オッズ'])
+    
+    def get_odds(self, race_url: str, odds_type: str = 'popular') -> pd.DataFrame:
+        """
+        3連単オッズ（人気順のみ）を取得
+        
+        Args:
+            race_url: レース詳細ページのURL
+            odds_type: 'popular' (人気順のみ対応)
+        
+        Returns:
+            人気順オッズのDataFrame (順位, 組み合わせ, オッズ)
+        """
+        try:
+            # オッズページURLを構築
+            if '?' in race_url:
+                odds_url = f"{race_url}&pageType=odds&kakeshikiType=3rentan"
+            else:
+                odds_url = f"{race_url}?pageType=odds&kakeshikiType=3rentan"
+            
+            response = self.session.get(odds_url, timeout=10)
+            response.raise_for_status()
+            time.sleep(1)
+            
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # オッズセクションを探す
+            odds_sections = soup.find_all('div', class_='oddspop_table_wrapper')
+            
+            if not odds_sections:
+                print("⚠️ オッズセクションが見つかりません（JavaScriptレンダリングが必要な可能性）")
+                return pd.DataFrame()
+            
+            # 3連単セクション（最初のセクション）
+            sanrentan_section = odds_sections[0]
+            
+            # テーブルを取得（1つ目が人気順）
+            tables = sanrentan_section.find_all('table')
+            
+            if not tables:
+                print("⚠️ オッズテーブルが見つかりません")
+                return pd.DataFrame()
+            
+            # 人気順テーブル（1つ目）
+            popular_table = tables[0]
+            rows = popular_table.find_all('tr')
+            
+            odds_data = []
+            for row in rows:
+                th = row.find('th')
+                td = row.find('td')
+                
+                if th and td:
+                    rank = th.get_text(strip=True)
+                    num_span = td.find('span', class_='num')
+                    odds_span = td.find('span', class_='odds')
+                    
+                    if num_span and odds_span:
+                        combination = num_span.get_text(strip=True)
+                        odds = odds_span.get_text(strip=True)
+                        odds_data.append({
+                            '順位': rank,
+                            '組み合わせ': combination,
+                            'オッズ': odds
+                        })
+            
+            df = pd.DataFrame(odds_data)
+            print(f"✅ オッズデータ取得: {len(df)}通り")
+            return df
+            
+        except Exception as e:
+            print(f"❌ オッズデータ取得エラー: {e}")
+            return pd.DataFrame()
     
     def get_race_results(self, race_url: str) -> pd.DataFrame:
         """
