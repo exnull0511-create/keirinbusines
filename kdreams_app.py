@@ -19,8 +19,12 @@ def main():
     st.markdown("**当日のS級レースデータを取得・CSV出力**")
     
     # セッション状態の初期化
-    if 'scraper' not in st.session_state:
+    # バージョン番号を上げると古いスクレイパーインスタンスをリセットする
+    SCRAPER_VERSION = "2"
+    if 'scraper' not in st.session_state or st.session_state.get('scraper_version') != SCRAPER_VERSION:
         st.session_state.scraper = KdreamsScraper()
+        st.session_state.scraper_version = SCRAPER_VERSION
+
     if 'race_data' not in st.session_state:
         st.session_state.race_data = None
     
