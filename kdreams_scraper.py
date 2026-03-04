@@ -692,7 +692,7 @@ class KdreamsScraper:
                 'venue_name': '熊本',
                 'grade': 'GI',
                 'race_cards': DataFrame,  # 全レースの出走表（レース列を追加）
-                'odds_list': DataFrame,   # 全レースのオッズ（レース列を追加）
+                'lines_list': DataFrame,  # 全レースのライン情報（レース列を追加）
                 'results_list': DataFrame # 全レースの結果（レース列を追加）
             }
         """
@@ -709,13 +709,13 @@ class KdreamsScraper:
                 'venue_name': venue_name,
                 'grade': '',
                 'race_cards': pd.DataFrame(),
-                'odds_list': pd.DataFrame(),
+                'lines_list': pd.DataFrame(),
                 'results_list': pd.DataFrame()
             }
         
         # データを格納するリスト
         all_race_cards = []
-        all_odds = []
+        all_lines = []
         all_results = []
         
         total_races = len(all_races)
@@ -737,14 +737,18 @@ class KdreamsScraper:
                 else:
                     print(f"  ⚠️ 出走表: データなし")
                 
-                # オッズを取得
-                odds = self.get_odds(race_url, 'popular')
-                if not odds.empty:
-                    odds.insert(0, 'レース', f"{race_no}R")
-                    all_odds.append(odds)
-                    print(f"  ✅ オッズ: {len(odds)}通り")
+                # ライン情報を取得
+                lines = self.get_race_lines(race_url)
+                if lines:
+                    for ln in lines:
+                        all_lines.append({
+                            'レース': f"{race_no}R",
+                            'ライン番号': ln['line'],
+                            '車番': '-'.join(str(b) for b in ln['bibs'])
+                        })
+                    print(f"  ✅ ライン情報: {len(lines)}ライン")
                 else:
-                    print(f"  ⚠️ オッズ: データなし")
+                    print(f"  ⚠️ ライン情報: データなし")
                 
                 # レース結果を取得
                 results = self.get_race_results(race_url)
@@ -761,27 +765,115 @@ class KdreamsScraper:
         
         # DataFrameを統合
         combined_race_cards = pd.concat(all_race_cards, ignore_index=True) if all_race_cards else pd.DataFrame()
-        combined_odds = pd.concat(all_odds, ignore_index=True) if all_odds else pd.DataFrame()
+        combined_lines = pd.DataFrame(all_lines) if all_lines else pd.DataFrame(columns=['レース', 'ライン番号', '車番'])
         combined_results = pd.concat(all_results, ignore_index=True) if all_results else pd.DataFrame()
         
         print(f"\n{'='*60}")
         print(f"一括取得完了: {venue_name}")
         print(f"  出走表: {len(combined_race_cards)}行")
-        print(f"  オッズ: {len(combined_odds)}行")
+        print(f"  ライン情報: {len(combined_lines)}行")
         print(f"  結果: {len(combined_results)}行")
         print(f"{'='*60}\n")
         
         return {
             'venue_name': venue_name,
-            'grade': '',  # 必要に応じて開催情報から取得
+            'grade': '',
             'race_cards': combined_race_cards,
-            'odds_list': combined_odds,
+            'lines_list': combined_lines,
             'results_list': combined_results
         }
 
 
 
+    def get_race_lines(self, race_url: str) -> List[Dict]:
+        """
+        ライン構成を取得する。
+
+        HTML構造:
+          <div class="line_position">
+            <span class="icon_p"><span class="p007">7</span>...</span>  # 車番7
+            <span class="icon_p"><span class="p001">1</span>...</span>  # 車番1
+            <span class="icon_p space"></span>                          # ライン区切り
+            <span class="icon_p"><span class="p002">2</span>...</span>  # 車番2
+            ...
+          </div>
+        """
+        import re as _re
+
+        try:
+            if '/racecard/' in race_url:
+                parts = race_url.split('/racecard/')
+                if len(parts) == 2:
+                    race_url = parts[0] + '/racedetail/' + parts[1]
+
+            response = self.session.get(race_url, timeout=10)
+            response.raise_for_status()
+            time.sleep(0.5)
+            soup = BeautifulSoup(response.text, 'html.parser')
+
+            # line_position div 内の span.icon_p を値得る
+            line_pos_div = soup.find('div', class_='line_position')
+            if not line_pos_div:
+                return []
+
+            result   = []
+            line_no  = 1
+            cur_bibs: List[int] = []
+            seen:     set       = set()
+
+            for span in line_pos_div.find_all('span', class_='icon_p'):
+                classes = span.get('class', [])
+
+                # space クラス = ライン区切り
+                if 'space' in classes:
+                    if cur_bibs:
+                        result.append({"line": line_no, "bibs": cur_bibs})
+                        line_no += 1
+                        cur_bibs = []
+                        seen     = set()
+                    continue
+
+                # p00X クラスを持つ子要素から車番を取得
+                # 例: p007 → 7号車, p001 → 1号車
+                for child in span.find_all('span'):
+                    child_classes = child.get('class', [])
+                    for c in child_classes:
+                        m = _re.match(r'^p0+([1-9])$', c)   # p001/p007 など
+                        if m:
+                            b = int(m.group(1))
+                            if b not in seen:
+                                seen.add(b)
+                                cur_bibs.append(b)
+
+            # 末尾のライン
+            if cur_bibs:
+                result.append({"line": line_no, "bibs": cur_bibs})
+
+            return result
+
+        except Exception as e:
+            print(f"❌ ライン情報取得エラー: {e}")
+            return []
+
+
+    def get_race_lines_text(self, race_url: str) -> str:
+        """
+        get_race_lines() の結果を人間可読な文字列で返す。
+
+        例: "ライン1: 3-5-1 / ライン2: 4-7 / ライン3: 2-6-8-9"
+        """
+        lines = self.get_race_lines(race_url)
+        if not lines:
+            return "ライン情報なし"
+        parts = []
+        for ln in lines:
+            bib_str = "-".join(str(b) for b in ln["bibs"])
+            parts.append(f"ライン{ln['line']}: {bib_str}")
+        return " / ".join(parts)
+
+
 if __name__ == "__main__":
+
     # テスト実行
     scraper = KdreamsScraper()
     races = scraper.get_todays_races()

@@ -47,9 +47,8 @@ def main():
         with st.spinner("開催場一覧を取得中..."):
             races = st.session_state.scraper.get_races(date_type)
             st.session_state.races = races
-            st.session_state.current_date_type = date_type  # 選択した日付タイプを保存
+            st.session_state.current_date_type = date_type
             if races:
-                # 開催場ごとにグループ化
                 venues = {}
                 for race in races:
                     velodrome = race['velodrome']
@@ -61,15 +60,13 @@ def main():
             else:
                 st.sidebar.error("❌ レースが見つかりませんでした")
     
-    
     # 2段階選択: 開催場 → レース
     if 'venues' in st.session_state and st.session_state.venues:
         st.sidebar.markdown("### ステップ1: 開催場を選択")
         
-        # 開催場リストを作成（Grade情報付き）
         venue_options = []
         for velodrome, races in st.session_state.venues.items():
-            grade = races[0]['grade']  # 最初のレースのGradeを使用
+            grade = races[0]['grade']
             day = races[0].get('day', '')
             venue_options.append(f"{velodrome} ({grade}) {day}")
         
@@ -80,10 +77,8 @@ def main():
             key="venue_select"
         )
         
-        # 選択した開催場の全レース（1R-12R）を生成
         selected_venue_name = list(st.session_state.venues.keys())[selected_venue_idx]
-        venue_info = st.session_state.venues[selected_venue_name][0]  # 開催場情報
-        
+        venue_info = st.session_state.venues[selected_venue_name][0]
         
         # 全レースURLを生成（1R-12R）
         all_races = st.session_state.scraper.get_all_races_from_venue(venue_info['url'])
@@ -92,33 +87,26 @@ def main():
         st.sidebar.markdown("---")
         if st.sidebar.button("📦 この開催場の全レースを一括取得", use_container_width=True, type="secondary"):
             with st.spinner(f"{selected_venue_name} の全レースデータを取得中... (2〜3分かかります)"):
-                # プログレスバー用のコンテナを作成
                 progress_container = st.empty()
                 progress_bar = progress_container.progress(0)
                 
-                # 一括取得を実行
                 bulk_data = st.session_state.scraper.get_venue_all_data(
                     selected_venue_name,
                     venue_info['url']
                 )
-                
-                # グレード情報を追加
                 bulk_data['grade'] = venue_info['grade']
                 
-                # セッションに保存
                 st.session_state.bulk_data = bulk_data
-                st.session_state.race_data = None  # 個別データをクリア
+                st.session_state.race_data = None
                 
                 progress_bar.progress(100)
                 st.rerun()
         
         st.sidebar.markdown("---")
-
         
         if all_races:
             st.sidebar.markdown("### ステップ2: レースを選択")
             
-            # レース選択ドロップダウン (1R-12R)
             race_options = [f"{r['name']}" for r in all_races]
             selected_race_idx = st.sidebar.selectbox(
                 f"{selected_venue_name}のレース:",
@@ -136,17 +124,19 @@ def main():
             st.sidebar.markdown(f"**📍 選択中:** {selected_race['name']}")
             st.sidebar.markdown(f"**🏁 グレード:** {selected_race['grade']}")
             
-            # データ取得ボタン
+            # データ取得ボタン（オッズ削除、ライン情報追加）
             if st.sidebar.button("📥 データを取得", use_container_width=True, type="primary"):
                 with st.spinner("データを取得中... (20〜30秒かかります)"):
                     race_card = st.session_state.scraper.get_race_card(selected_race['url'])
                     race_results = st.session_state.scraper.get_race_results(selected_race['url'])
-                    odds_data = st.session_state.scraper.get_odds(selected_race['url'], 'popular')
+                    lines = st.session_state.scraper.get_race_lines(selected_race['url'])
+                    lines_text = st.session_state.scraper.get_race_lines_text(selected_race['url'])
                 
                 st.session_state.race_data = {
                     'race_card': race_card,
                     'race_results': race_results,
-                    'odds': odds_data,
+                    'lines': lines,
+                    'lines_text': lines_text,
                     'race_name': selected_race['name'],
                     'race_url': selected_race['url']
                 }
@@ -156,7 +146,9 @@ def main():
     else:
         st.sidebar.info("👆 まず「本日のレース一覧を取得」ボタンを押してください")
     
+    # ──────────────────────────────────────────────────────────
     # メインエリア: 一括取得データ表示
+    # ──────────────────────────────────────────────────────────
     if 'bulk_data' in st.session_state and st.session_state.bulk_data:
         bulk_data = st.session_state.bulk_data
         
@@ -165,18 +157,12 @@ def main():
         # 統合Excelダウンロードボタン（上部に配置）
         st.markdown("### 📥 統合ダウンロード")
         
-        # Excelファイル生成
         excel_buffer = io.BytesIO()
         with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-            # 出走表シート
             if not bulk_data['race_cards'].empty:
                 bulk_data['race_cards'].to_excel(writer, sheet_name='出走表', index=False)
-            
-            # オッズシート
-            if not bulk_data['odds_list'].empty:
-                bulk_data['odds_list'].to_excel(writer, sheet_name='オッズ', index=False)
-            
-            # 結果シート
+            if not bulk_data['lines_list'].empty:
+                bulk_data['lines_list'].to_excel(writer, sheet_name='ライン情報', index=False)
             if not bulk_data['results_list'].empty:
                 bulk_data['results_list'].to_excel(writer, sheet_name='レース結果', index=False)
         
@@ -185,7 +171,7 @@ def main():
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             st.download_button(
-                label="📊 Excelファイルをダウンロード（出走表・オッズ・結果統合）",
+                label="📊 Excelファイルをダウンロード（出走表・ライン・結果統合）",
                 data=excel_data,
                 file_name=f"{bulk_data['venue_name']}_全レースデータ.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -195,10 +181,8 @@ def main():
         
         st.markdown("---")
         
-        # タブで切り替え
-        tab1, tab2, tab3 = st.tabs(["🏁 出走表（全レース）", "💰 オッズ（全レース）", "🏆 結果（全レース）"])
+        tab1, tab2, tab3 = st.tabs(["🏁 出走表（全レース）", "🔗 ライン情報（全レース）", "🏆 結果（全レース）"])
         
-        # タブ1: 出走表
         with tab1:
             st.subheader("出走表データ（全レース統合）")
             if not bulk_data['race_cards'].empty:
@@ -207,16 +191,14 @@ def main():
             else:
                 st.warning("出走表データが取得できませんでした")
         
-        # タブ2: オッズ
         with tab2:
-            st.subheader("オッズデータ（全レース統合）")
-            if not bulk_data['odds_list'].empty:
-                st.markdown(f"**取得データ数:** {len(bulk_data['odds_list'])}行")
-                st.dataframe(bulk_data['odds_list'], use_container_width=True, height=500)
+            st.subheader("ライン情報（全レース統合）")
+            if not bulk_data['lines_list'].empty:
+                st.markdown(f"**取得ライン数:** {len(bulk_data['lines_list'])}件")
+                st.dataframe(bulk_data['lines_list'], use_container_width=True, height=500)
             else:
-                st.warning("オッズデータが取得できませんでした")
+                st.warning("ライン情報が取得できませんでした")
         
-        # タブ3: 結果
         with tab3:
             st.subheader("レース結果（全レース統合）")
             if not bulk_data['results_list'].empty:
@@ -225,7 +207,6 @@ def main():
             else:
                 st.info("レース結果がまだ確定していないか、データが取得できませんでした")
         
-        # クリアボタン
         st.markdown("---")
         col1, col2, col3 = st.columns([2, 1, 1])
         with col3:
@@ -233,14 +214,15 @@ def main():
                 st.session_state.bulk_data = None
                 st.rerun()
     
-    # メインエリア: データ表示
+    # ──────────────────────────────────────────────────────────
+    # メインエリア: 個別レース表示
+    # ──────────────────────────────────────────────────────────
     if st.session_state.race_data:
         data = st.session_state.race_data
         
         st.header(f"📊 {data['race_name']} - データ")
         
-        # タブで切り替え
-        tab1, tab2, tab3 = st.tabs(["🏁 出走表", "🏆 レース結果", "💰 オッズ (人気順)"])
+        tab1, tab2, tab3 = st.tabs(["🏁 出走表", "🔗 ライン情報", "🏆 レース結果"])
         
         # タブ1: 出走表
         with tab1:
@@ -249,7 +231,6 @@ def main():
                 st.markdown(f"**取得選手数:** {len(data['race_card'])}名")
                 st.dataframe(data['race_card'], use_container_width=True, height=400)
                 
-                # CSVダウンロードとコピー用データ準備
                 csv_buffer = io.StringIO()
                 data['race_card'].to_csv(csv_buffer, index=False, encoding='utf-8-sig')
                 csv_data = csv_buffer.getvalue()
@@ -263,8 +244,6 @@ def main():
                         mime="text/csv",
                         use_container_width=True
                     )
-                
-                # コピー用のCSV表示（コピーボタン付き）
                 with col2:
                     with st.expander("📋 表をコピー（CSV形式）"):
                         st.caption("下のボックス右上のコピーアイコンをクリックしてコピーできます")
@@ -272,14 +251,45 @@ def main():
             else:
                 st.warning("出走表データが取得できませんでした")
         
-        # タブ2: レース結果
+        # タブ2: ライン情報
         with tab2:
+            st.subheader("ライン情報（並び予想）")
+            lines = data.get('lines', [])
+            lines_text = data.get('lines_text', '')
+            
+            if lines:
+                st.markdown(f"**ライン予想:** `{lines_text}`")
+                st.markdown("---")
+                for ln in lines:
+                    bibs_str = " → ".join(str(b) for b in ln['bibs'])
+                    st.markdown(f"**ライン {ln['line']}:** {bibs_str}（{len(ln['bibs'])}車）")
+                
+                # DataFrameでも表示
+                lines_df = pd.DataFrame([
+                    {'ライン番号': ln['line'], '車番': '-'.join(str(b) for b in ln['bibs'])}
+                    for ln in lines
+                ])
+                st.dataframe(lines_df, use_container_width=True)
+                
+                csv_buffer = io.StringIO()
+                lines_df.to_csv(csv_buffer, index=False, encoding='utf-8-sig')
+                st.download_button(
+                    label="📥 ラインCSVダウンロード",
+                    data=csv_buffer.getvalue(),
+                    file_name=f"{data['race_name']}_ライン.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
+            else:
+                st.info("ライン情報が取得できませんでした（レース前日は未掲載の場合があります）")
+        
+        # タブ3: レース結果
+        with tab3:
             st.subheader("レース結果詳細")
             if not data['race_results'].empty:
                 st.markdown(f"**出走選手数:** {len(data['race_results'])}名")
                 st.dataframe(data['race_results'], use_container_width=True, height=350)
                 
-                # CSVダウンロードとコピー用データ準備
                 csv_buffer = io.StringIO()
                 data['race_results'].to_csv(csv_buffer, index=False, encoding='utf-8-sig')
                 csv_data = csv_buffer.getvalue()
@@ -293,8 +303,6 @@ def main():
                         mime="text/csv",
                         use_container_width=True
                     )
-                
-                # コピー用のCSV表示（コピーボタン付き）
                 with col2:
                     with st.expander("📋 表をコピー（CSV形式）"):
                         st.caption("下のボックス右上のコピーアイコンをクリックしてコピーできます")
@@ -302,100 +310,48 @@ def main():
             else:
                 st.info("レース結果がまだ確定していないか、データが取得できませんでした")
         
-        # タブ3: オッズ（人気順）
-        with tab3:
-            st.subheader("オッズデータ（人気順 50通り）")
-            if 'odds' in data and not data['odds'].empty:
-                st.markdown(f"**取得オッズ数:** {len(data['odds'])}通り")
-                st.dataframe(data['odds'], use_container_width=True, height=400)
-                
-                # CSVダウンロードとコピー用データ準備
-                csv_buffer = io.StringIO()
-                data['odds'].to_csv(csv_buffer, index=False, encoding='utf-8-sig')
-                csv_data = csv_buffer.getvalue()
-                
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.download_button(
-                        label="📥 CSVダウンロード",
-                        data=csv_data,
-                        file_name=f"{data['race_name']}_オッズ.csv",
-                        mime="text/csv",
-                        use_container_width=True
-                    )
-                
-                # コピー用のCSV表示（コピーボタン付き）
-                with col2:
-                    with st.expander("📋 表をコピー（CSV形式）"):
-                        st.caption("下のボックス右上のコピーアイコンをクリックしてコピーできます")
-                        st.code(csv_data, language="csv")
-            else:
-                st.warning("⚠️ オッズデータが取得できませんでした。オッズページがJavaScriptで動的に読み込まれる場合、通常のHTTPリクエストでは取得できないことがあります。")
-        
-        # 全データ統合ダウンロード
         st.markdown("---")
-        st.subheader("📦 統合ダウンロード")
-        
         col1, col2 = st.columns(2)
-        
-        with col1:
-            # すべてをZIPにまとめる（オプション）
-            st.info("各データを個別にダウンロードしてください")
-        
         with col2:
-            # クリアボタン
             if st.button("🗑️ データをクリア", use_container_width=True):
                 st.session_state.race_data = None
                 st.rerun()
     
-    else:
+    elif not ('bulk_data' in st.session_state and st.session_state.bulk_data):
         st.info("👈 サイドバーから開催場とレースを選択してデータを取得してください")
         
-        # 使い方ガイド
         with st.expander("📖 使い方ガイド"):
             st.markdown("""
             ## 🎯 2つの取得方法
             
-            ### 方法1: レース個別取得
-            1つのレースのデータを素早く取得したい場合
-            
-            **手順:**
+            ### 方法1: レース個別取得（20〜30秒）
             1. サイドバーの「本日の開催場一覧を取得」ボタンをクリック
             2. ステップ1で開催場を選択
-            3. ステップ2でレースを選択（1R〜12R）
-            4. 「データを取得」ボタンをクリック（20〜30秒）
+            3. ステップ2でレース（1R〜12R）を選択
+            4. 「データを取得」ボタンをクリック
             
             **取得データ:**
             - 出走表: 19カラムの詳細データ
+            - ライン情報: 並び予想（ライン番号・車番）
             - レース結果: 着順、車番、選手名、着差、上がり、決まり手、S/B
-            - オッズ（人気順）: 3連単オッズ 人気順50通り
             
             ---
             
-            ### 方法2: 開催場一括取得 ⭐NEW
-            開催場の全レース（1R〜12R）のデータをまとめて取得したい場合
-            
-            **手順:**
+            ### 方法2: 開催場一括取得（2〜3分）⭐
             1. サイドバーの「本日の開催場一覧を取得」ボタンをクリック
             2. ステップ1で開催場を選択
-            3. 「📦 この開催場の全レースを一括取得」ボタンをクリック（2〜3分）
+            3. 「📦 この開催場の全レースを一括取得」ボタンをクリック
+            4. 「📊 Excelファイルをダウンロード」で1つのファイル（3シート）を取得
             
-            **取得データ:**
-            - 出走表（全レース統合）: 全レースの出走表データ（レース列付き）
-            - オッズ（全レース統合）: 全レースのオッズデータ（レース列付き）
-            - 結果（全レース統合）: 全レースの結果データ（レース列付き）
-            
-            **ダウンロード:**
-            1つのExcelファイルをダウンロードできます。ファイルには3つのシートが含まれます:
-            - 「出走表」シート: 全レースの出走表データ（レース列付き）
-            - 「オッズ」シート: 全レースのオッズデータ（レース列付き）
-            - 「レース結果」シート: 全レースの結果データ（レース列付き）
+            **Excelシート構成:**
+            - 「出走表」シート: 全レースの出走表（レース列付き）
+            - 「ライン情報」シート: 全レースのライン情報（レース列付き）
+            - 「レース結果」シート: 全レースの結果（レース列付き）
             
             ---
             
             ### ⚠️ 注意事項
-            - 一括取得は2〜3分程度かかります（12レース × 3種類のデータ）
-            - ダウンロードされるファイルはExcel形式（.xlsx）です
+            - 一括取得は2〜3分程度かかります
             - サーバーに過度な負荷をかけないよう、連続実行は避けてください
             - Kドリームスのサイト構造変更により、データ取得が失敗する場合があります
             """)
