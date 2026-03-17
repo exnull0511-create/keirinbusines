@@ -62,13 +62,16 @@ class KdreamsScraper:
                 
                 # 日付タイプに応じてセクションを選択
                 if date_type == "yesterday":
-                    # 前日: rPrev内のリンクを探す
-                    target_section = race_list.find('ul', class_='rPrev')
+                    # 前日: div.previous 内の結果リンクを探す
+                    target_section = race_list.find('div', class_='previous')
                     if not target_section:
                         continue
                     
-                    # 結果リンクを探す（class="res"）
-                    result_link = target_section.find('a', class_='res')
+                    # 結果リンクを探す（li.result > a）
+                    result_li = target_section.find('li', class_='result')
+                    if not result_li:
+                        continue
+                    result_link = result_li.find('a')
                     if not result_link:
                         continue
                     
@@ -77,7 +80,7 @@ class KdreamsScraper:
                         race_url = self.BASE_URL.rstrip('/') + race_url
                     
                     # 日程情報
-                    day_elem = target_section.find('li')
+                    day_elem = target_section.find('p', class_='day')
                     day_info = day_elem.get_text(strip=True) if day_elem else ""
                     
                     race_status = "結果"
@@ -154,31 +157,39 @@ class KdreamsScraper:
     
     def get_all_races_from_venue(self, racecard_url: str) -> List[Dict]:
         """
-        開催場のracecardURLから全レース（1R-12R）のracedetail URLを生成
+        開催場のURL（racecard / raceresult いずれも可）から
+        全レース（1R-12R）のracedetail URLを生成
         
         Args:
-            racecard_url: 開催場の出走表URL (例: .../racecard/73202602050300/)
+            racecard_url: 出走表URL (.../racecard/ID/) または
+                          結果URL (.../raceresult/ID/)
             
         Returns:
             各レースの情報リスト [{"race_number": 1, "name": "1R", "url": "..."}]
         """
         try:
-            # racecardのURLから開催IDを抽出
-            # 例: https://keirin.kdreams.jp/komatsushima/racecard/73202602050300/
-            match = re.search(r'/racecard/(\d+)/', racecard_url)
+            # racecard / raceresult / racedetail のいずれのURLにも対応
+            match = re.search(r'/(racecard|raceresult|racedetail)/(\d+?)(?:0{0,2}\d)?/', racecard_url)
             if not match:
                 print(f"URLパターンが不正: {racecard_url}")
                 return []
             
-            kaisai_id = match.group(1)  # 例: "73202602050300"
+            url_type = match.group(1)
+            raw_id   = match.group(2)
             
-            # ベースURLを取得
-            base_url = racecard_url.split('/racecard/')[0]
+            # racedetailのIDは末尾2桁がレース番号なので除去して開催IDにする
+            if url_type == 'racedetail':
+                kaisai_id = raw_id[:-2] if len(raw_id) > 2 else raw_id
+            else:
+                kaisai_id = raw_id  # racecard / raceresult はそのまま開催ID
             
-            # 各レース（1R-12R）のURLを生成
+            # ベースURL（競輪場部分まで）を取得
+            base_url = re.split(r'/(racecard|raceresult|racedetail)/', racecard_url)[0]
+            
+            # 各レース（1R-12R）のracedetail URLを生成
             races = []
-            for race_no in range(1, 13):  # 1R～12R
-                race_id = f"{kaisai_id}{race_no:02d}"  # 例: 7320260205030001
+            for race_no in range(1, 13):
+                race_id  = f"{kaisai_id}{race_no:02d}"
                 race_url = f"{base_url}/racedetail/{race_id}/"
                 races.append({
                     'race_number': race_no,
@@ -187,7 +198,7 @@ class KdreamsScraper:
                     'race_id': race_id
                 })
             
-            print(f"生成したレース数: {len(races)}")
+            print(f"生成したレース数: {len(races)} (kaisai_id={kaisai_id})")
             return races
             
         except Exception as e:
