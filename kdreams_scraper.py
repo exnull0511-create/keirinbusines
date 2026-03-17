@@ -160,33 +160,35 @@ class KdreamsScraper:
         開催場のURL（racecard / raceresult いずれも可）から
         全レース（1R-12R）のracedetail URLを生成
         
-        Args:
-            racecard_url: 出走表URL (.../racecard/ID/) または
-                          結果URL (.../raceresult/ID/)
-            
-        Returns:
-            各レースの情報リスト [{"race_number": 1, "name": "1R", "url": "..."}]
+        URL例:
+          racecard:   .../racecard/36202603160100/      → kaisai_id=36202603160100
+          raceresult: .../raceresult/36202603160100/    → kaisai_id=36202603160100
+          racedetail: .../racedetail/3620260316010001/  → kaisai_id=36202603160100（末尾2桁を除去）
+        
+        racedetail ID = kaisai_id（14桁）+ レース番号（2桁）
         """
         try:
-            # racecard / raceresult / racedetail のいずれのURLにも対応
-            match = re.search(r'/(racecard|raceresult|racedetail)/(\d+?)(?:0{0,2}\d)?/', racecard_url)
+            # スキームタイプと完全なIDを取得（\d+は欲張りマッチ）
+            match = re.search(r'/(racecard|raceresult|racedetail)/(\d+)/', racecard_url)
             if not match:
                 print(f"URLパターンが不正: {racecard_url}")
                 return []
             
-            url_type = match.group(1)
-            raw_id   = match.group(2)
+            url_type  = match.group(1)
+            full_id   = match.group(2)
             
-            # racedetailのIDは末尾2桁がレース番号なので除去して開催IDにする
+            # racedetailのIDは末尾2桁がレース番号 → 除去して14桁の開催IDにする
             if url_type == 'racedetail':
-                kaisai_id = raw_id[:-2] if len(raw_id) > 2 else raw_id
+                kaisai_id = full_id[:-2]
             else:
-                kaisai_id = raw_id  # racecard / raceresult はそのまま開催ID
+                # racecard / raceresult はそのままが開催ID（14桁）
+                kaisai_id = full_id
             
-            # ベースURL（競輪場部分まで）を取得
+            # ベースURL（競輪場パス部分まで）を取得
             base_url = re.split(r'/(racecard|raceresult|racedetail)/', racecard_url)[0]
             
             # 各レース（1R-12R）のracedetail URLを生成
+            # racedetail ID = kaisai_id + レース番号2桁
             races = []
             for race_no in range(1, 13):
                 race_id  = f"{kaisai_id}{race_no:02d}"
@@ -206,7 +208,9 @@ class KdreamsScraper:
             import traceback
             traceback.print_exc()
             return []
-    
+
+
+
     def get_race_card(self, race_url: str) -> pd.DataFrame:
         """
         出走表データを取得（racedetailページから23カラム・バリデーション付き）
