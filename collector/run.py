@@ -28,7 +28,7 @@ def today_jst() -> date:
     return datetime.now(JST).date()
 
 
-SCHEMA = "1"
+SCHEMA = "2"
 
 
 class Store:
@@ -108,7 +108,9 @@ def races_on(cli: Client, st: Store, d: date) -> tuple[list[dict], bool]:
             if not r["result"]:
                 complete = False
             races.append(r)
-        print(f"  {d} {slug} {k}日目: {sum(1 for r in races if r['race_id'].startswith(mid))}R")
+        mine = [r for r in races if r["race_id"].startswith(mid)]
+        bad = [r["race_no"] for r in mine if r.get("odds_check") is False]
+        print(f"  {d} {slug} {k}日目: {len(mine)}R" + (f"  ! オッズと払戻の不一致: {bad}R" if bad else ""))
     return races, complete and bool(targets)
 
 
@@ -134,7 +136,7 @@ def main(argv=None):
     st, cli = Store(a.data), Client(sleep=a.sleep)
 
     if a.cmd == "collect":
-        days = [date.fromisoformat(a.date)] if a.date else [today_jst() - timedelta(days=1), today_jst()]
+        days = [date.fromisoformat(a.date)] if a.date else [today_jst() - timedelta(days=2), today_jst() - timedelta(days=1)]
         for d in days:
             if a.date or d.isoformat() not in st.done:
                 print(d, "races:", do_date(cli, st, d))
