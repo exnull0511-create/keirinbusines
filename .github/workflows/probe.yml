@@ -1,0 +1,29 @@
+name: probe-site-structure
+on:
+  workflow_dispatch:
+  push:
+    branches: ["claude/**"]
+    paths: ["tools/probe.py", ".github/workflows/probe.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install requests beautifulsoup4
+      - run: python tools/probe.py /tmp/samples
+      - name: Push samples to probe-samples branch
+        run: |
+          cd /tmp/samples
+          git init -q -b probe-samples
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add -A && git commit -qm "probe samples $(date -u +%FT%TZ)"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" probe-samples

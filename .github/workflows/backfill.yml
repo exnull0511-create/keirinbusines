@@ -1,0 +1,39 @@
+name: backfill-history
+on:
+  schedule:
+    - cron: "10 */6 * * *"   # 6時間ごと。過去分を新しい日付から順に遡って取得（完了済みはスキップ）
+  workflow_dispatch:
+    inputs:
+      start:
+        description: "どこまで遡るか YYYY-MM-DD"
+        default: "2024-01-01"
+      rounds:
+        description: "30分×何回まわすか（最大10）"
+        default: "10"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: data-writer
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r collector/requirements.txt
+      - run: bash tools/data_branch.sh checkout
+      - name: Backfill (30分ごとに保存)
+        run: |
+          for i in $(seq 1 ${{ inputs.rounds || '10' }}); do
+            python -m collector.run backfill --data data --start ${{ inputs.start || '2024-01-01' }} --max-minutes 30
+            bash tools/data_branch.sh push "backfill round $i"
+          done

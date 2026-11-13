@@ -1,0 +1,36 @@
+name: collect-daily
+on:
+  schedule:
+    - cron: "40 14 * * *"   # 毎日 23:40 JST（当日と前日の取りこぼし）
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "取得する日付 YYYY-MM-DD（空なら前日と当日）"
+        required: false
+  push:
+    branches: ["claude/**"]
+    paths: ["collector/**", ".github/workflows/collect.yml"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: data-writer
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r collector/requirements.txt
+      - run: bash tools/data_branch.sh checkout
+      - run: python -m collector.run collect --data data ${{ inputs.date && format('--date {0}', inputs.date) || '' }}
+      - if: always()
+        run: bash tools/data_branch.sh push "daily"
