@@ -134,7 +134,7 @@ def main(argv=None):
     st, cli = Store(a.data), Client(sleep=a.sleep)
 
     if a.cmd == "collect":
-        days = [date.fromisoformat(a.date)] if a.date else [today_jst() - timedelta(days=1), today_jst()]
+        days = [date.fromisoformat(a.date)] if a.date else [today_jst() - timedelta(days=2), today_jst() - timedelta(days=1)]
         for d in days:
             if a.date or d.isoformat() not in st.done:
                 print(d, "races:", do_date(cli, st, d))

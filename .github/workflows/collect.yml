@@ -1,11 +1,11 @@
 name: collect-daily
 on:
   schedule:
-    - cron: "40 14 * * *"   # 毎日 23:40 JST（当日と前日の取りこぼし）
+    - cron: "10 22 * * *"   # 毎朝 7:10 JST に前日分（ミッドナイト終了・戦評掲載後）
   workflow_dispatch:
     inputs:
       date:
-        description: "取得する日付 YYYY-MM-DD（空なら前日と当日）"
+        description: "取得する日付 YYYY-MM-DD（空なら前日）"
         required: false
   push:
     branches: ["claude/**"]
