@@ -1,0 +1,79 @@
+[
+ {
+  "tag": "news2024",
+  "url": "https://keirin.kdreams.jp/kaisai/race-news/1120240606/11202406060100/",
+  "status": 200,
+  "file": "000_news2024.html",
+  "bytes": 65302
+ },
+ {
+  "tag": "past_detail_2024",
+  "url": "https://keirin.kdreams.jp/hakodate/racedetail/1120240606010007/",
+  "status": 200,
+  "file": "001_past_detail_2024.html",
+  "bytes": 328054
+ },
+ {
+  "tag": "past_venue_result_2024",
+  "url": "https://keirin.kdreams.jp/hakodate/raceresult/11202406060100/",
+  "status": 200,
+  "file": "002_past_venue_result_2024.html",
+  "bytes": 140967
+ },
+ {
+  "tag": "sched2021",
+  "url": "https://keirin.kdreams.jp/schedule/search/2021/06/",
+  "status": 200,
+  "file": "003_sched2021.html",
+  "bytes": 179634
+ },
+ {
+  "tag": "news2021",
+  "url": "https://keirin.kdreams.jp/kaisai/race-news/4420210627/44202106270100/",
+  "status": 200,
+  "file": "004_news2021.html",
+  "bytes": 63352
+ },
+ {
+  "tag": "past_detail_2021",
+  "url": "https://keirin.kdreams.jp/ogaki/racedetail/4420210627010007/",
+  "status": 200,
+  "file": "005_past_detail_2021.html",
+  "bytes": 238991
+ },
+ {
+  "tag": "past_venue_result_2021",
+  "url": "https://keirin.kdreams.jp/ogaki/raceresult/44202106270100/",
+  "status": 200,
+  "file": "006_past_venue_result_2021.html",
+  "bytes": 116839
+ },
+ {
+  "tag": "sched2023",
+  "url": "https://keirin.kdreams.jp/schedule/search/2023/06/",
+  "status": 200,
+  "file": "007_sched2023.html",
+  "bytes": 179868
+ },
+ {
+  "tag": "news2023",
+  "url": "https://keirin.kdreams.jp/kaisai/race-news/4220230612/42202306120100/",
+  "status": 200,
+  "file": "008_news2023.html",
+  "bytes": 63575
+ },
+ {
+  "tag": "past_detail_2023",
+  "url": "https://keirin.kdreams.jp/nagoya/racedetail/4220230612010007/",
+  "status": 200,
+  "file": "009_past_detail_2023.html",
+  "bytes": 239280
+ },
+ {
+  "tag": "past_venue_result_2023",
+  "url": "https://keirin.kdreams.jp/nagoya/raceresult/42202306120100/",
+  "status": 200,
+  "file": "010_past_venue_result_2023.html",
+  "bytes": 104735
+ }
+]
