@@ -149,7 +149,7 @@ def _parse_entries(soup) -> list[dict]:
             e = entries.setdefault(num(num_td.get_text()), {"car": num(num_td.get_text())})
             e["comment"] = norm(ctd.get_text())
             after = [norm(td.get_text()) for td in ctd.find_next_siblings("td")]
-            after = [a for a in after if a != "詳細"]
+            after = [re.sub(r"\s*詳細$", "", a) for a in after if a != "詳細"]
             if len(after) == 1:
                 e["short_eval"] = after[0]
             elif len(after) >= 4:
@@ -160,30 +160,38 @@ def _parse_entries(soup) -> list[dict]:
 
 
 def _parse_line(soup) -> dict:
-    tip = soup.find("table", class_="tipster_table")
-    if not tip:
-        return {}
-    rows = tip.find_all("tr")
-    seq = []
-    for tr in rows:
-        cells = tr.find_all("td")
-        if cells and all(td.find(class_=re.compile("icon_num")) for td in cells):
-            for td in cells:
-                n = re.search(r"icon_n(\d+)", str(td))
-                t = re.search(r"icon_t(\d+)", str(td))
-                seq.append({"car": int(n.group(1)) if n else None, "tactic": t.group(1) if t else None})
-            break
-    # 並び: 戦法コードが1xx以外（先頭・単騎）で新しいラインが始まる
-    lines, cur = [], []
-    for x in seq:
-        if cur and x["tactic"] and not x["tactic"].startswith("1"):
+    """並び予想。<div class="line_position"> 内の icon_p（space=ライン区切り）と予想戦法ラベル。"""
+    lines, cur, tactics = [], [], {}
+    box = soup.find("div", class_="line_position")
+    if box:
+        for sp in box.find_all("span", class_="icon_p"):
+            if "space" in (sp.get("class") or []):
+                if cur:
+                    lines.append(cur)
+                    cur = []
+                continue
+            car = tac = None
+            for ch in sp.find_all("span"):
+                m = re.match(r"^p(\d{3})$", " ".join(ch.get("class") or []))
+                if not m:
+                    continue
+                if car is None and 0 < int(m.group(1)) < 10:
+                    car = int(m.group(1))
+                elif car is not None:
+                    tac = norm(ch.get_text())
+            if car:
+                cur.append(car)
+                tactics[car] = tac
+        if cur:
             lines.append(cur)
-            cur = []
-        cur.append(x["car"])
-    if cur:
-        lines.append(cur)
-    raw = [[norm(c.get_text(" ")) for c in tr.find_all(["td", "th"])] for tr in rows]
-    return {"order": seq, "lines": lines, "last_bs": raw[2][1:] if len(raw) > 2 else []}
+    tip = soup.find("table", class_="tipster_table")
+    last_bs = []
+    if tip:
+        for tr in tip.find_all("tr"):
+            cells = [norm(c.get_text(" ")) for c in tr.find_all(["td", "th"])]
+            if cells and "最終BS" in cells[0].replace(" ", ""):
+                last_bs = cells[1:]
+    return {"lines": lines, "tactics": {str(k): v for k, v in tactics.items()}, "last_bs": last_bs}
 
 
 def _parse_result(soup) -> list[dict]:
@@ -316,6 +324,7 @@ def parse_race(html: str, url: str) -> dict | None:
         "refund": _parse_refund(soup),
         "odds": _parse_odds(soup),
         "review": _parse_review(soup),
+        "schema": 1,
         "fetched_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
     }
 

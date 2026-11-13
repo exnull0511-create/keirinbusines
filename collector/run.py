@@ -28,10 +28,20 @@ def today_jst() -> date:
     return datetime.now(JST).date()
 
 
+SCHEMA = "1"
+
+
 class Store:
     def __init__(self, root: Path):
         self.root = root
         (root / "state" / "meets").mkdir(parents=True, exist_ok=True)
+        sp = root / "state" / "schema.txt"
+        if not sp.exists() or sp.read_text().strip() != SCHEMA:
+            # データ形式が変わったら取り直す（開催情報キャッシュは残す）
+            import shutil
+            shutil.rmtree(root / "races", ignore_errors=True)
+            (root / "state" / "done.txt").unlink(missing_ok=True)
+            sp.write_text(SCHEMA + "\n")
         self.done_path = root / "state" / "done.txt"
         self.done = set(self.done_path.read_text().split()) if self.done_path.exists() else set()
 
