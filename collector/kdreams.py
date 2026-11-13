@@ -242,7 +242,7 @@ def _parse_refund(soup) -> list[dict]:
 
 def _parse_odds(soup) -> dict:
     out = {}
-    # 3連単: 1着ごとのマトリクス（行=2着, 列=3着）
+    # 3連単: 1着ごとのマトリクス（行見出し=3着, 列見出し=2着）※払戻金との照合で確認済み
     box = soup.find(id="JS_ODDSCONTENTS_3rentan")
     if box:
         o = {}
@@ -260,11 +260,11 @@ def _parse_odds(soup) -> dict:
                         header = [h for h in hs if isinstance(h, int)]
                         continue
                 if header and ths and tr.find("td"):
-                    second = num(ths[0].get_text())
+                    third = num(ths[0].get_text())
                     vals = [td for td in tr.find_all("td")]
-                    for third, td in zip(header, vals):
+                    for second, td in zip(header, vals):
                         val = num(td.get_text())
-                        if isinstance(val, (int, float)) and first and second and third not in (first, second):
+                        if isinstance(val, (int, float)) and first and third and second not in (first, third):
                             o[f"{first}-{second}-{third}"] = float(val)
         if o:
             n = max(int(k.split("-")[0]) for k in o)
@@ -307,6 +307,17 @@ def _parse_review(soup) -> dict:
     return {"summary": paras[0] if paras else "", "comments": paras[1:]}
 
 
+def odds_check(odds: dict, refund: list[dict]):
+    """3連単の確定オッズと払戻金が一致するか（True/False、照合不能はNone）。"""
+    t = odds.get("3連単")
+    pays = [p for p in refund if p["bet"] == "3連単"]
+    if not t or not pays:
+        return None
+    d = dict(zip(permutations(range(1, t["n"] + 1), 3), t["v"]))
+    v = d.get(tuple(int(x) for x in pays[0]["combo"].split("-")))
+    return v is not None and abs(v - pays[0]["payout"] / 100) < 0.15
+
+
 def parse_race(html: str, url: str) -> dict | None:
     soup = BeautifulSoup(html, "lxml")
     for t in soup(["script", "style", "noscript"]):
@@ -315,14 +326,16 @@ def parse_race(html: str, url: str) -> dict | None:
     if "race_no" not in meta:
         return None
     m = re.search(r"/([a-z]+)/racedetail/(\d{16})/", url)
+    odds, refund = _parse_odds(soup), _parse_refund(soup)
     return {
         "race_id": m.group(2) if m else None, "slug": m.group(1) if m else None, "url": url,
         **meta,
         "entries": _parse_entries(soup),
         "line": _parse_line(soup),
         "result": _parse_result(soup),
-        "refund": _parse_refund(soup),
-        "odds": _parse_odds(soup),
+        "refund": refund,
+        "odds": odds,
+        "odds_check": odds_check(odds, refund),
         "review": _parse_review(soup),
         "schema": 1,
         "fetched_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
