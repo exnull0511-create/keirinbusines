@@ -32,54 +32,21 @@ def get(url, tag):
         return ""
 
 
-# 1) 過去スケジュールがどこまで遡れるか
-for ym in ["2026/10", "2025/06", "2024/06", "2023/06", "2021/06"]:
-    html = get(f"{K}/schedule/search/{ym}/", "schedule_" + ym.replace("/", ""))
-    if ym == "2024/06":
-        sched_2024 = html
-
-# 2) 今日・昨日のレース詳細（出走表／結果／オッズ）
-top = get(f"{K}/raceresult/", "raceresult_list")
-ids = re.findall(r"/([a-z]+)/racedetail/(\d{16})/", top)
-if ids:
-    venue, rid = ids[0]
-    base = f"{K}/{venue}/racedetail/{rid}/"
-    get(base, "racedetail")
-    get(base + "?pageType=result", "racedetail_result")
-    get(base + "?pageType=odds&kakeshikiType=3rentan", "racedetail_odds3t")
-    get(base + "?pageType=odds&kakeshikiType=2shatan", "racedetail_odds2t")
-    get(base + "?pageType=yoso", "racedetail_yoso")
-    get(base + "?pageType=comment", "racedetail_comment")
-    get(base + "?pageType=movie", "racedetail_movie")
-    kaisai = rid[:14]
-    get(f"{K}/{venue}/raceresult/{kaisai}/", "venue_raceresult")
-    get(f"{K}/{venue}/racecard/{kaisai}/", "venue_racecard")
-
-# 3) 記事・番組ページ
-sched_now = get(f"{K}/schedule/", "schedule_now")
-for pat, tag in [(r'href="([^"]*/kaisai/race-news/[^"]+)"', "race_news"),
-                 (r'href="([^"]*/kaisai/race-program/[^"]+)"', "race_program")]:
-    for u in list(dict.fromkeys(re.findall(pat, sched_now)))[:2]:
-        get(u if u.startswith("http") else K + u, tag)
-
-# 4) 過去（2024年6月）のレースが見られるか
-for u in list(dict.fromkeys(re.findall(r'href="([^"]+)"', sched_2024 or "")))[:400]:
-    if re.search(r"/(racecard|raceresult|race-program|race-news|racedetail)/", u):
-        get(u if u.startswith("http") else K + u, "past_2024_link")
-        break
-m = re.search(r"/(\d{2})(2024\d{4})", sched_2024 or "")
-if m:
-    pass
-# 2024年6月のレース詳細IDを推定して直接アクセス（例: 立川 28）
-get(f"{K}/tachikawa/racedetail/2820240601010001/?pageType=result", "past_guess_result")
-
-# 5) 他サイトの接続確認
-for u, tag in [("https://www.winticket.jp/keirin", "winticket"),
-               ("https://keirin.jp/pc/top", "keirinjp"),
-               ("https://keirin.netkeiba.com/", "netkeirin"),
-               ("https://www.chariloto.com/keirin", "chariloto"),
-               ("https://www.oddspark.com/keirin/", "oddspark")]:
-    get(u, "ext_" + tag)
+# 過去レース詳細に、コメント・戦評・確定オッズが残っているか
+for code_date, tag in [("1120240606", "2024"), (None, "2021"), (None, "2023")]:
+    if code_date is None:
+        ym = {"2021": "2021/06", "2023": "2023/06"}[tag]
+        sched = get(f"{K}/schedule/search/{ym}/", "sched" + tag)
+        ids = re.findall(r"race-news/(\d{10})/", sched)
+        if not ids:
+            continue
+        code_date = ids[len(ids) // 2]
+    news = get(f"{K}/kaisai/race-news/{code_date}/{code_date}0100/", "news" + tag)
+    m = re.search(r"/([a-z]+)/racedetail/(" + code_date + r"\d{4})01/", news) or re.search(r"/([a-z]+)/racecard/(" + code_date + r"\d{2})00/", news)
+    if m:
+        slug = m.group(1)
+        get(f"{K}/{slug}/racedetail/{code_date}010007/", "past_detail_" + tag)
+        get(f"{K}/{slug}/raceresult/{code_date}0100/", "past_venue_result_" + tag)
 
 (OUT / "index.json").write_text(json.dumps(index, ensure_ascii=False, indent=1), encoding="utf-8")
 print(json.dumps(index, ensure_ascii=False, indent=1))
