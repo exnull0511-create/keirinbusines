@@ -1,117 +1,85 @@
 """
-サイト構造の調査用クローラー（GitHub Actions上で実行）。
-各サイトのページを「URLの形」ごとに少数ずつ保存し、パーサー作成の材料にする。
+サイト構造の調査（2回目・対象を絞った版）。GitHub Actions上で実行。
 """
 import json
 import re
 import sys
 import time
-from collections import defaultdict
 from pathlib import Path
-from urllib.parse import urljoin, urlparse
 
 import requests
-from bs4 import BeautifulSoup
 
 OUT = Path(sys.argv[1] if len(sys.argv) > 1 else "samples")
+OUT.mkdir(parents=True, exist_ok=True)
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36"
-SLEEP = 1.5
-PER_PATTERN = 2
-
-SITES = {
-    "kdreams": {
-        "host": "keirin.kdreams.jp",
-        "seeds": ["https://keirin.kdreams.jp/"],
-        "max_pages": 70,
-    },
-    "oddspark": {
-        "host": "www.oddspark.com",
-        "seeds": [
-            "https://www.oddspark.com/keirin/",
-            "https://www.oddspark.com/keirin/yosou/toride/2025/0602.html",
-            "https://www.oddspark.com/keirin/auth-yosou/toride/2026/0627.html",
-            "https://www.oddspark.com/keirin/blog/graderace/cat316/index_5.html",
-        ],
-        "max_pages": 45,
-        "path_prefix": "/keirin",
-    },
-}
+K = "https://keirin.kdreams.jp"
+s = requests.Session()
+s.headers.update({"User-Agent": UA, "Accept-Language": "ja,en;q=0.8"})
+index = []
 
 
-def shape(url: str) -> str:
-    """URLを形に変換（数字→#）して、同じ種類のページを重複取得しない。"""
-    p = urlparse(url)
-    q = re.sub(r"=[^&]*", "=", p.query)
-    return re.sub(r"\d+", "#", p.path) + ("?" + q if q else "")
-
-
-def extra_variants(url: str):
-    """Kドリームスのレース詳細は、クエリで結果・オッズ画面に切り替わる。"""
-    m = re.search(r"/racedetail/(\d+)/?$", urlparse(url).path)
-    if m:
-        base = url.split("?")[0].rstrip("/") + "/"
-        return [base + "?pageType=result", base + "?pageType=odds&kakeshikiType=3rentan",
-                base + "odds/3rentan/"]
-    return []
-
-
-def crawl(name, cfg, session):
-    d = OUT / name
-    d.mkdir(parents=True, exist_ok=True)
-    queue = list(cfg["seeds"])
-    seen, per_shape, index = set(), defaultdict(int), []
-    while queue and len(index) < cfg["max_pages"]:
-        url = queue.pop(0)
-        if url in seen:
-            continue
-        seen.add(url)
-        sh = shape(url)
-        if per_shape[sh] >= PER_PATTERN and url not in cfg["seeds"]:
-            continue
-        try:
-            r = session.get(url, timeout=20)
-        except Exception as e:  # noqa: BLE001
-            index.append({"url": url, "error": str(e)})
-            continue
-        time.sleep(SLEEP)
-        per_shape[sh] += 1
+def get(url, tag):
+    try:
+        r = s.get(url, timeout=25)
         r.encoding = r.apparent_encoding if r.encoding in (None, "ISO-8859-1") else r.encoding
-        fn = f"{len(index):03d}.html"
-        (d / fn).write_text(r.text, encoding="utf-8")
-        index.append({"url": url, "status": r.status_code, "file": fn, "shape": sh, "bytes": len(r.text)})
-        if r.status_code != 200 or "html" not in r.headers.get("content-type", ""):
-            continue
-        soup = BeautifulSoup(r.text, "html.parser")
-        new = []
-        for a in soup.find_all("a", href=True):
-            u = urljoin(url, a["href"]).split("#")[0]
-            pu = urlparse(u)
-            if pu.netloc != cfg["host"]:
-                continue
-            if cfg.get("path_prefix") and not pu.path.startswith(cfg["path_prefix"]):
-                continue
-            if u not in seen and per_shape[shape(u)] < PER_PATTERN:
-                new.append(u)
-        for u in list(new):
-            new.extend(extra_variants(u))
-        # 未知の形のページを優先
-        new.sort(key=lambda u: per_shape[shape(u)])
-        queue = new + queue if len(index) < 5 else queue + new
-    (d / "index.json").write_text(json.dumps(index, ensure_ascii=False, indent=1), encoding="utf-8")
-    print(name, "pages:", len(index))
+        fn = f"{len(index):03d}_{tag}.html"
+        (OUT / fn).write_text(r.text, encoding="utf-8")
+        index.append({"tag": tag, "url": url, "status": r.status_code, "file": fn, "bytes": len(r.text)})
+        time.sleep(1.5)
+        return r.text if r.status_code == 200 else ""
+    except Exception as e:  # noqa: BLE001
+        index.append({"tag": tag, "url": url, "error": str(e)})
+        return ""
 
 
-def main():
-    s = requests.Session()
-    s.headers.update({"User-Agent": UA, "Accept-Language": "ja,en;q=0.8"})
-    for name, cfg in SITES.items():
-        crawl(name, cfg, s)
-    for host in ("https://keirin.kdreams.jp/robots.txt", "https://www.oddspark.com/robots.txt"):
-        try:
-            (OUT / (urlparse(host).netloc + "_robots.txt")).write_text(s.get(host, timeout=20).text)
-        except Exception as e:  # noqa: BLE001
-            print("robots error", host, e)
+# 1) 過去スケジュールがどこまで遡れるか
+for ym in ["2026/10", "2025/06", "2024/06", "2023/06", "2021/06"]:
+    html = get(f"{K}/schedule/search/{ym}/", "schedule_" + ym.replace("/", ""))
+    if ym == "2024/06":
+        sched_2024 = html
 
+# 2) 今日・昨日のレース詳細（出走表／結果／オッズ）
+top = get(f"{K}/raceresult/", "raceresult_list")
+ids = re.findall(r"/([a-z]+)/racedetail/(\d{16})/", top)
+if ids:
+    venue, rid = ids[0]
+    base = f"{K}/{venue}/racedetail/{rid}/"
+    get(base, "racedetail")
+    get(base + "?pageType=result", "racedetail_result")
+    get(base + "?pageType=odds&kakeshikiType=3rentan", "racedetail_odds3t")
+    get(base + "?pageType=odds&kakeshikiType=2shatan", "racedetail_odds2t")
+    get(base + "?pageType=yoso", "racedetail_yoso")
+    get(base + "?pageType=comment", "racedetail_comment")
+    get(base + "?pageType=movie", "racedetail_movie")
+    kaisai = rid[:14]
+    get(f"{K}/{venue}/raceresult/{kaisai}/", "venue_raceresult")
+    get(f"{K}/{venue}/racecard/{kaisai}/", "venue_racecard")
 
-if __name__ == "__main__":
-    main()
+# 3) 記事・番組ページ
+sched_now = get(f"{K}/schedule/", "schedule_now")
+for pat, tag in [(r'href="([^"]*/kaisai/race-news/[^"]+)"', "race_news"),
+                 (r'href="([^"]*/kaisai/race-program/[^"]+)"', "race_program")]:
+    for u in list(dict.fromkeys(re.findall(pat, sched_now)))[:2]:
+        get(u if u.startswith("http") else K + u, tag)
+
+# 4) 過去（2024年6月）のレースが見られるか
+for u in list(dict.fromkeys(re.findall(r'href="([^"]+)"', sched_2024 or "")))[:400]:
+    if re.search(r"/(racecard|raceresult|race-program|race-news|racedetail)/", u):
+        get(u if u.startswith("http") else K + u, "past_2024_link")
+        break
+m = re.search(r"/(\d{2})(2024\d{4})", sched_2024 or "")
+if m:
+    pass
+# 2024年6月のレース詳細IDを推定して直接アクセス（例: 立川 28）
+get(f"{K}/tachikawa/racedetail/2820240601010001/?pageType=result", "past_guess_result")
+
+# 5) 他サイトの接続確認
+for u, tag in [("https://www.winticket.jp/keirin", "winticket"),
+               ("https://keirin.jp/pc/top", "keirinjp"),
+               ("https://keirin.netkeiba.com/", "netkeirin"),
+               ("https://www.chariloto.com/keirin", "chariloto"),
+               ("https://www.oddspark.com/keirin/", "oddspark")]:
+    get(u, "ext_" + tag)
+
+(OUT / "index.json").write_text(json.dumps(index, ensure_ascii=False, indent=1), encoding="utf-8")
+print(json.dumps(index, ensure_ascii=False, indent=1))
