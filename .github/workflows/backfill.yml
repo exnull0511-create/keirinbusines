@@ -2,6 +2,8 @@ name: backfill-history
 on:
   schedule:
     - cron: "10 */6 * * *"   # 6時間ごと。過去分を新しい日付から順に遡って取得（完了済みはスキップ）
+  push:
+    branches: ["claude/backfill-kick"]   # このブランチへのpushで即時開始
   workflow_dispatch:
     inputs:
       start:
