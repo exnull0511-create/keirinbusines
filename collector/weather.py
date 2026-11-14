@@ -37,17 +37,19 @@ HOURLY = "wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m,precip
 def fetch(lat, lon, start: date, end: date) -> list[list]:
     rows = []
     # 確定値（archive）は数日遅れ。直近は予報APIの過去分で補う
-    for url, s, e in [("https://archive-api.open-meteo.com/v1/archive", start, end - timedelta(days=6)),
-                      ("https://api.open-meteo.com/v1/forecast", end - timedelta(days=5), end)]:
+    today = date.today()
+    for url, s, e in [("https://archive-api.open-meteo.com/v1/archive", start, min(end, today - timedelta(days=6))),
+                      ("https://api.open-meteo.com/v1/forecast", max(start, today - timedelta(days=5)), end)]:
         if s > e:
             continue
         params = dict(latitude=lat, longitude=lon, start_date=s.isoformat(), end_date=e.isoformat(),
                       hourly=HOURLY, timezone="Asia/Tokyo", wind_speed_unit="ms")
-        for i in range(4):
+        for i in range(5):
             r = requests.get(url, params=params, timeout=60)
             if r.status_code == 200:
                 break
-            time.sleep(10 * (i + 1))
+            print("  retry", r.status_code, r.text[:120], flush=True)
+            time.sleep(60 * (i + 1))
         r.raise_for_status()
         h = r.json()["hourly"]
         rows += list(zip(h["time"], h["wind_speed_10m"], h["wind_direction_10m"], h["wind_gusts_10m"],
@@ -56,27 +58,57 @@ def fetch(lat, lon, start: date, end: date) -> list[list]:
     return rows
 
 
+def read_existing(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    with gzip.open(path, "rt", encoding="utf-8") as f:
+        rd = csv.reader(f)
+        next(rd, None)
+        return {row[0]: row for row in rd}
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", required=True, type=Path)
     ap.add_argument("--start", default="2024-01-01")
+    ap.add_argument("--pause", type=float, default=40)
     a = ap.parse_args(argv)
     out = a.data / "weather"
     out.mkdir(parents=True, exist_ok=True)
     end = date.today()
+    failed = []
     for name, (lat, lon) in VENUES.items():
-        rows = fetch(lat, lon, date.fromisoformat(a.start), end)
+        path = out / f"{name}.csv.gz"
+        have = read_existing(path)
+        # 既存分の最終日の7日前から取り直す（確定値への置き換えのため）
+        start = date.fromisoformat(a.start)
+        if have:
+            start = max(start, date.fromisoformat(max(have)[:10]) - timedelta(days=7))
+        try:
+            rows = []
+            s = start
+            while s <= end:  # 1年ずつ取得（APIの重み制限対策）
+                e = min(end, date(s.year, 12, 31))
+                rows += fetch(lat, lon, s, e)
+                s = e + timedelta(days=1)
+                time.sleep(a.pause)
+        except Exception as ex:  # noqa: BLE001
+            print(name, "失敗:", ex, flush=True)
+            failed.append(name)
+            time.sleep(a.pause * 2)
+            continue
+        for row in rows:
+            have[row[0]] = list(row)
         buf = io.StringIO()
         w = csv.writer(buf)
         w.writerow(["time", "wind_speed", "wind_dir", "gust", "temp", "precip"])
-        seen = set()
-        for row in rows:
-            if row[0] not in seen:
-                seen.add(row[0])
-                w.writerow(row)
-        with gzip.open(out / f"{name}.csv.gz", "wt", encoding="utf-8") as f:
+        for k in sorted(have):
+            w.writerow(have[k])
+        with gzip.open(path, "wt", encoding="utf-8") as f:
             f.write(buf.getvalue())
-        print(name, len(seen), "hours", flush=True)
+        print(name, len(have), "hours", flush=True)
+    if failed:
+        print("未取得:", failed)
 
 
 if __name__ == "__main__":
