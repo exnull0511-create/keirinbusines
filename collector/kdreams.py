@@ -297,6 +297,12 @@ def _parse_odds(soup) -> dict:
     return out
 
 
+def _parse_weather(soup) -> dict:
+    """結果欄の「天候 曇/風速 1.0m」（レース時点の実測）。"""
+    m = re.search(r"天候\s*(\S+?)\s*/\s*風速\s*([\d.]+)\s*m", norm(soup.get_text(" ")))
+    return {"weather": m.group(1), "wind_speed": float(m.group(2))} if m else {}
+
+
 def _parse_review(soup) -> dict:
     h = soup.find(lambda t: t.name in ("h3", "h4") and "戦い終わって" in t.get_text())
     if not h:
@@ -337,7 +343,8 @@ def parse_race(html: str, url: str) -> dict | None:
         "odds": odds,
         "odds_check": odds_check(odds, refund),
         "review": _parse_review(soup),
-        "schema": 1,
+        **_parse_weather(soup),
+        "schema": 3,
         "fetched_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
     }
 

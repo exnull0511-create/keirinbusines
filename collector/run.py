@@ -28,7 +28,7 @@ def today_jst() -> date:
     return datetime.now(JST).date()
 
 
-SCHEMA = "2"
+SCHEMA = "3"
 
 
 class Store:
@@ -37,9 +37,7 @@ class Store:
         (root / "state" / "meets").mkdir(parents=True, exist_ok=True)
         sp = root / "state" / "schema.txt"
         if not sp.exists() or sp.read_text().strip() != SCHEMA:
-            # データ形式が変わったら取り直す（開催情報キャッシュは残す）
-            import shutil
-            shutil.rmtree(root / "races", ignore_errors=True)
+            # データ形式が変わったら全日付を取り直す。古いファイルは上書きされるまで残す（分析を止めない）
             (root / "state" / "done.txt").unlink(missing_ok=True)
             sp.write_text(SCHEMA + "\n")
         self.done_path = root / "state" / "done.txt"

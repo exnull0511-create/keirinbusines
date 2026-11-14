@@ -1,0 +1,32 @@
+name: weather
+on:
+  schedule:
+    - cron: "40 21 * * *"   # 毎朝 6:40 JST
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths: ["collector/weather.py", ".github/workflows/weather.yml"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: weather-writer
+  cancel-in-progress: false
+
+jobs:
+  weather:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r collector/requirements.txt
+      - run: bash tools/data_branch.sh checkout
+      - run: python -m collector.weather --data data --start 2024-01-01
+      - if: always()
+        run: bash tools/data_branch.sh push "weather"
