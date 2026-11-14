@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: data-writer
@@ -37,3 +38,13 @@ jobs:
             python -m collector.run backfill --data data --start ${{ inputs.start || '2024-01-01' }} --max-minutes 30
             bash tools/data_branch.sh push "backfill round $i"
           done
+      - name: 未取得が残っていれば、すぐ次の実行を起動（定期実行の遅れ・抜け対策）
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          left=$(python -m collector.run remaining --data data --start ${{ inputs.start || '2024-01-01' }})
+          echo "未取得: ${left}日"
+          if [ "$left" -gt 2 ]; then
+            gh workflow run backfill.yml --repo "${{ github.repository }}" --ref main -f start=${{ inputs.start || '2024-01-01' }}
+          fi

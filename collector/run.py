@@ -125,7 +125,7 @@ def do_date(cli: Client, st: Store, d: date) -> int:
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["collect", "backfill"])
+    ap.add_argument("cmd", choices=["collect", "backfill", "remaining"])
     ap.add_argument("--data", required=True, type=Path)
     ap.add_argument("--date")
     ap.add_argument("--start", default="2024-01-01")
@@ -140,6 +140,15 @@ def main(argv=None):
         for d in days:
             if a.date or d.isoformat() not in st.done:
                 print(d, "races:", do_date(cli, st, d))
+        return
+
+    if a.cmd == "remaining":
+        end = date.fromisoformat(a.end) if a.end else today_jst() - timedelta(days=1)
+        d, n = date.fromisoformat(a.start), 0
+        while d <= end:
+            n += d.isoformat() not in st.done
+            d += timedelta(days=1)
+        print(n)
         return
 
     t0 = time.time()
