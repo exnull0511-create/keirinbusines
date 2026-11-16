@@ -6,6 +6,7 @@ AI初版の特徴量。1行=1選手×1レース。
 - 短期: 直近3走の主導権・着順、前日の上がり（役割別に補正）、その日の同場の逃げ決着率
 """
 import collections
+from datetime import date
 import numpy as np
 import pandas as pd
 from itertools import permutations
@@ -33,6 +34,8 @@ def build(rs, categories=None):
     last = collections.defaultdict(list)        # 選手名 -> 直近の(主導権, 着順)
     prevday = {}                                # (開催, 選手名) -> (日目, 役割別上がり偏差, 着順)
     vday = collections.defaultdict(list)        # (場, 日付) -> 逃げ決着か
+    meets = collections.defaultdict(list)       # 選手名 -> [(日付, 開催ID, 落車/失格があったか)]
+    pair = collections.defaultdict(lambda: [0, 0])  # (先頭名, 番手名) -> [連係回数, 番手が先頭に先着]
     rows, combos = [], {}
     for r in rs:
         E = {e["car"]: e for e in r["entries"]}
@@ -54,6 +57,7 @@ def build(rs, categories=None):
                 role_of[c] = "単騎" if len(l) == 1 else ROLE.get(i, "4番手以降")
                 line_of[c] = l
         vk = (r["venue"], r["date"])
+        dnow = date.fromisoformat(r["date"])
         vd = vday[vk]
         for c, e in E.items():
             l = line_of.get(c, [c])
@@ -62,6 +66,14 @@ def build(rs, categories=None):
             pv = prevday.get((mid, e["name"]))
             pvd = pv if pv and pv[0] == day - 1 else None
             cm = classify(e.get("comment"))
+            M = meets[e["name"]]
+            prevm = [x for x in M if x[1] != mid]
+            lastm = prevm[-1] if prevm else None
+            gap = (dnow - lastm[0]).days if lastm else np.nan
+            n30 = len({x[1] for x in prevm if (dnow - x[0]).days <= 30})
+            rak_last = int(any(x[2] for x in prevm if lastm and x[1] == lastm[1]))
+            rak_here = int(any(x[2] for x in M if x[1] == mid))
+            pr = pair.get((head.get("name"), e["name"])) if role_of.get(c) == "番手" else None
             rows.append(dict(
                 race=r["race_id"], date=r["date"], car=c, n=len(E), cls=cls(r["race_type"]), grade=r.get("grade") or "",
                 wind=r.get("wind_speed", np.nan), weather=r.get("weather") or "",
@@ -81,6 +93,8 @@ def build(rs, categories=None):
                 rec_rank=np.mean([x[1] for x in L3]) if L3 else np.nan,
                 prev_lapdev=pvd[1] if pvd else np.nan, prev_rank=pvd[2] if pvd else np.nan,
                 vday_n=len(vd), vday_nige=np.mean(vd) if vd else np.nan,
+                gap_days=gap, n30=n30, rak_last=rak_last, rak_here=rak_here,
+                pair_n=pr[0] if pr else np.nan, pair_beat=(pr[1] / pr[0]) if pr and pr[0] else np.nan,
                 y1=int(rk.get(c, 9) == 1), y2=int(rk.get(c, 9) <= 2), y3=int(rk.get(c, 9) <= 3),
             ))
         # ---- このレースの結果で履歴を更新（以降のレースの特徴量になる）。未確定のレースは更新しない
@@ -95,6 +109,13 @@ def build(rs, categories=None):
             if c in laps:
                 ref = np.median(by_role[role_of.get(c, "単騎")]) if len(by_role[role_of.get(c, "単騎")]) >= 2 else np.median(list(laps.values()))
                 prevday[(mid, e["name"])] = (day, laps[c] - ref, rk.get(c, 9))
+        for c, e in E.items():
+            meets[e["name"]].append((dnow, mid, res.get(c, {}).get("rank") in ("落", "失", "故")))
+        for l in r["line"]["lines"]:
+            if len(l) >= 2 and l[0] in E and l[1] in E:
+                pp = pair[(E[l[0]]["name"], E[l[1]]["name"])]
+                pp[0] += 1
+                pp[1] += int(rk.get(l[1], 9) < rk.get(l[0], 9))
         win_k = next((x["kimarite"] for x in r["result"] if x["rank"] == "1"), "")
         vd.append(int(win_k == "逃"))
     df = pd.DataFrame(rows)
