@@ -19,7 +19,7 @@ import time
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
-from .kdreams import BASE, Client, meet_info, meets_in_month, parse_race, race_url
+from .kdreams import BASE, Client, SiteDown, meet_info, meets_in_month, parse_race, race_url
 
 JST = timezone(timedelta(hours=9))
 
@@ -42,6 +42,16 @@ class Store:
             sp.write_text(SCHEMA + "\n")
         self.done_path = root / "state" / "done.txt"
         self.done = set(self.done_path.read_text().split()) if self.done_path.exists() else set()
+        # 修復: データファイルの無い「完了」日付と、空の開催キャッシュを取り消す
+        have = {p.name[:10] for p in (root / "races").glob("*/*.jsonl.gz")}
+        lost = {d for d in self.done if d not in have}
+        if lost:
+            print(f"修復: データの無い完了日付 {len(lost)} 日を未取得に戻します")
+            self.done -= lost
+            self.done_path.write_text("\n".join(sorted(self.done)) + "\n")
+        for p in (root / "state" / "meets").glob("*.json"):
+            if p.read_text().strip() in ("{}", ""):
+                p.unlink()
 
     def mark_done(self, d: date):
         self.done.add(d.isoformat())
@@ -71,7 +81,10 @@ def meets_for_month(cli: Client, st: Store, y: int, m: int, refresh: bool) -> di
     if cache and not refresh:
         return cache
     html = cli.get(f"{BASE}/schedule/search/{y}/{m:02d}/") or ""
-    for mid in meets_in_month(html):
+    ids = meets_in_month(html)
+    if not ids:
+        raise SiteDown(f"{y}/{m:02d} のスケジュールが取得できない")
+    for mid in ids:
         if mid in cache and cache[mid].get("slug") and cache[mid].get("days"):
             continue
         news = cli.get(f"{BASE}/kaisai/race-news/{mid}/{mid}0100/") or ""
@@ -116,7 +129,8 @@ def do_date(cli: Client, st: Store, d: date) -> int:
     races, complete = races_on(cli, st, d)
     if races:
         st.write_day(d, races)
-    if complete or (races == [] and (today_jst() - d).days > 3):
+    # レースが1つも取れない日は完了にしない（全国でレースが無い日はほぼ無い）
+    if complete:
         st.mark_done(d)
     return len(races)
 
@@ -137,7 +151,10 @@ def main(argv=None):
         days = [date.fromisoformat(a.date)] if a.date else [today_jst() - timedelta(days=2), today_jst() - timedelta(days=1)]
         for d in days:
             if a.date or d.isoformat() not in st.done:
-                print(d, "races:", do_date(cli, st, d))
+                try:
+                    print(d, "races:", do_date(cli, st, d))
+                except SiteDown as e:
+                    print("サイト応答なし:", e)
         return
 
     if a.cmd == "remaining":
@@ -155,7 +172,11 @@ def main(argv=None):
     d = end
     while d >= start:  # 新しい日付から順に遡る
         if d.isoformat() not in st.done:
-            n = do_date(cli, st, d)
+            try:
+                n = do_date(cli, st, d)
+            except SiteDown as e:
+                print("サイト応答なし。今回は中断して次回再開:", e, flush=True)
+                break
             print(d, "races:", n, f"requests={cli.n}", f"elapsed={(time.time()-t0)/60:.1f}m", flush=True)
             if (time.time() - t0) / 60 > a.max_minutes:
                 break

@@ -40,12 +40,17 @@ def num(s: str | None):
         return None
 
 
+class SiteDown(Exception):
+    """サイトが応答しない（制限・障害）。この回の取得を中断し、後で再開する。"""
+
+
 class Client:
     def __init__(self, sleep: float = 2.0, retries: int = 3):
         self.s = requests.Session()
         self.s.headers.update({"User-Agent": UA, "Accept-Language": "ja,en;q=0.8"})
         self.sleep, self.retries = sleep, retries
         self.n = 0
+        self.fail_streak = 0  # 連続失敗回数（サイト側の制限・障害の検知用）
 
     def get(self, url: str) -> str | None:
         for i in range(self.retries):
@@ -54,13 +59,18 @@ class Client:
                 self.n += 1
                 time.sleep(self.sleep)
                 if r.status_code == 404:
+                    self.fail_streak = 0
                     return None
                 if r.status_code == 200:
+                    self.fail_streak = 0
                     r.encoding = "utf-8"
                     return r.text
             except requests.RequestException:
                 pass
             time.sleep(self.sleep * (i + 2) * 3)
+        self.fail_streak += 1
+        if self.fail_streak >= 5:
+            raise SiteDown(f"連続{self.fail_streak}回の取得失敗: {url}")
         return None
 
 
