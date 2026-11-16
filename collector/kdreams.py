@@ -94,13 +94,32 @@ def race_url(slug: str, meet_id: str, day: int, race_no: int) -> str:
 
 # ---------- レース詳細の解析 ----------
 
+PREFS = ['北海道', '青森', '岩手', '宮城', '秋田', '山形', '福島', '茨城', '栃木', '群馬', '埼玉', '千葉', '東京', '神奈川', '新潟', '富山', '石川', '福井', '山梨', '長野', '岐阜', '静岡', '愛知', '三重', '滋賀', '京都', '大阪', '兵庫', '奈良', '和歌山', '鳥取', '島根', '岡山', '広島', '山口', '徳島', '香川', '愛媛', '高知', '福岡', '佐賀', '長崎', '熊本', '大分', '宮崎', '鹿児島', '沖縄']
+
+
+def split_name_pref(s: str):
+    """「巴 直也 神 奈川」のような文字列を、末尾の都道府県名で 氏名 / 府県 に分ける。"""
+    flat = s.replace(" ", "")
+    for p in sorted(PREFS, key=len, reverse=True):
+        if flat.endswith(p) and len(flat) > len(p):
+            # 元の文字列から府県分の文字数（空白を除く）を後ろから取り除く
+            k, i = len(p), len(s)
+            while k > 0 and i > 0:
+                i -= 1
+                if s[i] != " ":
+                    k -= 1
+            return s[:i].strip(), p
+    return s.strip(), None
+
+
 def _rider_cell(text: str):
     # 例: "大川 剛 青 森/25/121"
     t = norm(text)
-    m = re.match(r"(.+?)\s+([^\s/]+(?:\s[^\s/]+)?)/(\d+)/(\d+)", t)
+    m = re.match(r"(.+?)/(\d+)/(\d+)", t)
     if not m:
         return {"name": t}
-    return {"name": m.group(1).strip(), "pref": m.group(2).replace(" ", ""), "age": int(m.group(3)), "term": int(m.group(4))}
+    name, pref = split_name_pref(m.group(1))
+    return {"name": name, "pref": pref, "age": int(m.group(2)), "term": int(m.group(3))}
 
 
 def _parse_title(soup) -> dict:

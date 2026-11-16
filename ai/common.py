@@ -20,6 +20,15 @@ def heads_of(r):
     return E, out
 
 
+def fix_entries(r):
+    """過去データの「名字1文字の選手」で、名前と府県の切れ目がずれているものを直す。"""
+    from collector.kdreams import PREFS, split_name_pref
+    for e in r.get("entries", []):
+        if e.get("pref") and e["pref"] not in PREFS:
+            e["name"], e["pref"] = split_name_pref(f"{e.get('name', '')} {e['pref']}")
+    return r
+
+
 def load_races(data: Path, finished_only=True):
     rs = []
     for f in sorted((Path(data) / "races").glob("*/*.jsonl.gz")):
@@ -29,5 +38,5 @@ def load_races(data: Path, finished_only=True):
                 continue
             if finished_only and not (r["result"] and any(p["bet"] == "3連単" for p in r["refund"])):
                 continue
-            rs.append(r)
+            rs.append(fix_entries(r))
     return rs
