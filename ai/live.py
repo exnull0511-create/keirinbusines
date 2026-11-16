@@ -56,10 +56,11 @@ def main(argv=None):
     meta = pickle.load(open(a.data / "models" / "latest.pkl", "rb"))
     st, cli = Store(a.data), Client(sleep=1.2)
     todays, _ = races_on(cli, st, d)
-    todays = [r for r in todays if r.get("odds", {}).get("3連単") and r.get("entries")]
+    todays = [r for r in todays if r.get("entries")]
+    with_odds = [r for r in todays if r.get("odds", {}).get("3連単")]  # 前日などオッズ未発売のレースは採点しない
     history = [r for r in load_races(a.data) if r["date"] < d.isoformat()]
-    history += [r for r in todays if r["result"]]
-    scores = score_races(meta, history, todays)
+    history += [r for r in with_odds if r["result"]]
+    scores = score_races(meta, history, with_odds) if with_odds else {}
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     rows = []
     for r in todays:
@@ -70,7 +71,7 @@ def main(argv=None):
                      "entries": [{k: e.get(k) for k in ("car", "name", "mark", "comment", "score", "class", "style", "pref", "term", "age", "S", "B", "nige", "makuri")} for e in r["entries"]],
                      "url": r["url"],
                      "lines": r["line"]["lines"], "tactics": r["line"]["tactics"],
-                     "n": r["odds"]["3連単"]["n"], "odds": r["odds"]["3連単"]["v"], "ai": s,
+                     "n": (r["odds"].get("3連単") or {}).get("n", len(r["entries"])), "odds": (r["odds"].get("3連単") or {}).get("v", []), "ai": s,
                      "result": [{k: x[k] for k in ("rank", "car", "kimarite", "sb")} for x in r["result"]],
                      "refund": [p for p in r["refund"] if p["bet"] == "3連単"]})
     out = a.data / "live"
