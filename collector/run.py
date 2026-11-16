@@ -52,6 +52,17 @@ class Store:
         for p in (root / "state" / "meets").glob("*.json"):
             if p.read_text().strip() in ("{}", ""):
                 p.unlink()
+        # 修復(2026-11-16): 開催途中に記録した日程の抜けで取りこぼした可能性がある直近分を取り直す
+        rp = root / "state" / "repair_meetdays.txt"
+        if not rp.exists():
+            recent = {d for d in self.done if d >= "2026-10-20"}
+            self.done -= recent
+            self.done_path.write_text("\n".join(sorted(self.done)) + "\n")
+            for p in (root / "state" / "meets").glob("2026*.json"):
+                if p.name >= "202610.json":
+                    p.unlink()
+            rp.write_text(f"{len(recent)}\n")
+            print(f"修復: 直近 {len(recent)} 日分を取り直します")
 
     def mark_done(self, d: date):
         self.done.add(d.isoformat())
@@ -85,7 +96,9 @@ def meets_for_month(cli: Client, st: Store, y: int, m: int, refresh: bool) -> di
     if not ids:
         raise SiteDown(f"{y}/{m:02d} のスケジュールが取得できない")
     for mid in ids:
-        if mid in cache and cache[mid].get("slug") and cache[mid].get("days"):
+        start = datetime.strptime(mid[2:], "%Y%m%d").date()
+        ongoing = (today_jst() - start).days <= 7  # 開催中・直近の開催は日程が増えるので毎回取り直す
+        if mid in cache and cache[mid].get("slug") and cache[mid].get("days") and not ongoing:
             continue
         news = cli.get(f"{BASE}/kaisai/race-news/{mid}/{mid}0100/") or ""
         cache[mid] = meet_info(news, mid)
