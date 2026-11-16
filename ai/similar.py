@@ -90,6 +90,11 @@ def build_index(data: Path) -> list[dict]:
     maxday = collections.defaultdict(int)
     for r in rs:
         maxday[r["race_id"][:10]] = max(maxday[r["race_id"][:10]], int(r["race_id"][10:12]))
+    # 開催中で最終日のデータがまだ無い開催は、開催情報の日程で最終日を判定
+    for p in (data / "state" / "meets").glob("*.json"):
+        for mid, v in json.loads(p.read_text()).items():
+            if v.get("days"):
+                maxday[mid] = max(maxday[mid], max(v["days"]))
     rows = []
     for r in rs:
         rows += head_rows(r, maxday[r["race_id"][:10]])
