@@ -122,10 +122,10 @@ def summarize(rows: list[dict]) -> dict:
 def search(index: list[dict], target: dict, k: int = 5) -> dict:
     same = lambda x, keys: all(x[c] == target[c] for c in keys)
     core = ["linelen", "bunsen", "sec_senpai", "sec_local", "head_local"]
-    mine = [x for x in index if x["name"] == target["name"] and x["race_id"] < target["race_id"]]
+    mine = [x for x in index if x["name"] == target["name"] and x["date"] < target["date"]]
     mine_all = sorted([x for x in mine if same(x, CONDS)], key=lambda x: x["date"], reverse=True)
     mine_core = sorted([x for x in mine if same(x, core) and x not in mine_all], key=lambda x: x["date"], reverse=True)
-    others = [x for x in index if x["name"] != target["name"] and same(x, CONDS) and x["cls"] == target["cls"]]
+    others = [x for x in index if x["name"] != target["name"] and same(x, CONDS) and x["cls"] == target["cls"] and x["date"] < target["date"]]
     # 同じ競輪場 → 新しい順
     others = sorted(others, key=lambda x: (x["venue"] == target["venue"], x["date"]), reverse=True)
     return {"target": {c: target[c] for c in ["name", "car", "line", "tactic", "comment"] + CONDS},
