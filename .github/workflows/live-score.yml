@@ -1,0 +1,31 @@
+name: live-score
+on:
+  schedule:
+    - cron: "5 0-14 * * *"   # 9:05〜23:05 JST 毎時
+  workflow_dispatch:
+  push:
+    branches: ["claude/live-kick"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: live-score
+  cancel-in-progress: true
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r ai/requirements.txt
+      - run: bash tools/data_branch.sh checkout
+      - run: python -m ai.live --data data
+      - run: |
+          cd data && git checkout -- state 2>/dev/null || true; git clean -fdq state 2>/dev/null || true; cd ..
+          bash tools/data_branch.sh push "live"
