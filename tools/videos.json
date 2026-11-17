@@ -1,0 +1,146 @@
+[
+ {
+  "race_id": "8620261115020002",
+  "url": "https://keirin.kdreams.jp/beppu/racedetail/8620261115020002/",
+  "date": "2026-11-16",
+  "race_no": 2,
+  "args": "86,2,20261116,2",
+  "video": "https://wm.st.keirin.jp/wm-keirin86/20261116-86-02-02-01-00.mp4",
+  "head": [
+   200,
+   "18408259"
+  ]
+ },
+ {
+  "race_id": "8620261115020004",
+  "url": "https://keirin.kdreams.jp/beppu/racedetail/8620261115020004/",
+  "date": "2026-11-16",
+  "race_no": 4,
+  "args": "86,2,20261116,4",
+  "video": "https://wm.st.keirin.jp/wm-keirin86/20261116-86-02-04-01-00.mp4",
+  "head": [
+   200,
+   "16465645"
+  ]
+ },
+ {
+  "race_id": "8620261115020010",
+  "url": "https://keirin.kdreams.jp/beppu/racedetail/8620261115020010/",
+  "date": "2026-11-16",
+  "race_no": 10,
+  "args": "86,2,20261116,10",
+  "video": "https://wm.st.keirin.jp/wm-keirin86/20261116-86-02-10-01-00.mp4",
+  "head": [
+   200,
+   "16011121"
+  ]
+ },
+ {
+  "race_id": "8620261115020011",
+  "url": "https://keirin.kdreams.jp/beppu/racedetail/8620261115020011/",
+  "date": "2026-11-16",
+  "race_no": 11,
+  "args": "86,2,20261116,11",
+  "video": "https://wm.st.keirin.jp/wm-keirin86/20261116-86-02-11-01-00.mp4",
+  "head": [
+   200,
+   "16889345"
+  ]
+ },
+ {
+  "race_id": "4620261115020003",
+  "url": "https://keirin.kdreams.jp/toyama/racedetail/4620261115020003/",
+  "date": "2026-11-16",
+  "race_no": 3,
+  "args": "46,2,20261116,3",
+  "video": "https://wm.st.keirin.jp/wm-keirin46/20261116-46-02-03-01-00.mp4",
+  "head": [
+   200,
+   "17880359"
+  ]
+ },
+ {
+  "race_id": "4620261115020004",
+  "url": "https://keirin.kdreams.jp/toyama/racedetail/4620261115020004/",
+  "date": "2026-11-16",
+  "race_no": 4,
+  "args": "46,2,20261116,4",
+  "video": "https://wm.st.keirin.jp/wm-keirin46/20261116-46-02-04-01-00.mp4",
+  "head": [
+   200,
+   "18086021"
+  ]
+ },
+ {
+  "race_id": "4620261115020006",
+  "url": "https://keirin.kdreams.jp/toyama/racedetail/4620261115020006/",
+  "date": "2026-11-16",
+  "race_no": 6,
+  "args": "46,2,20261116,6",
+  "video": "https://wm.st.keirin.jp/wm-keirin46/20261116-46-02-06-01-00.mp4",
+  "head": [
+   200,
+   "17992514"
+  ]
+ },
+ {
+  "race_id": "4620261115020011",
+  "url": "https://keirin.kdreams.jp/toyama/racedetail/4620261115020011/",
+  "date": "2026-11-16",
+  "race_no": 11,
+  "args": "46,2,20261116,11",
+  "video": "https://wm.st.keirin.jp/wm-keirin46/20261116-46-02-11-01-00.mp4",
+  "head": [
+   200,
+   "18075405"
+  ]
+ },
+ {
+  "race_id": "7320261116010002",
+  "url": "https://keirin.kdreams.jp/komatsushima/racedetail/7320261116010002/",
+  "date": "2026-11-16",
+  "race_no": 2,
+  "args": "73,1,20261116,2",
+  "video": "https://wm.st.keirin.jp/wm-keirin73/20261116-73-01-02-01-00.mp4",
+  "head": [
+   200,
+   "22066180"
+  ]
+ },
+ {
+  "race_id": "7320261116010004",
+  "url": "https://keirin.kdreams.jp/komatsushima/racedetail/7320261116010004/",
+  "date": "2026-11-16",
+  "race_no": 4,
+  "args": "73,1,20261116,4",
+  "video": "https://wm.st.keirin.jp/wm-keirin73/20261116-73-01-04-01-00.mp4",
+  "head": [
+   200,
+   "20997665"
+  ]
+ },
+ {
+  "race_id": "7320261116010007",
+  "url": "https://keirin.kdreams.jp/komatsushima/racedetail/7320261116010007/",
+  "date": "2026-11-16",
+  "race_no": 7,
+  "args": "73,1,20261116,7",
+  "video": "https://wm.st.keirin.jp/wm-keirin73/20261116-73-01-07-01-00.mp4",
+  "head": [
+   200,
+   "23219988"
+  ]
+ },
+ {
+  "race_id": "7320261116010011",
+  "url": "https://keirin.kdreams.jp/komatsushima/racedetail/7320261116010011/",
+  "date": "2026-11-16",
+  "race_no": 11,
+  "args": "73,1,20261116,11",
+  "video": "https://wm.st.keirin.jp/wm-keirin73/20261116-73-01-11-01-00.mp4",
+  "head": [
+   200,
+   "20158471"
+  ]
+ }
+]
