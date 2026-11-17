@@ -146,6 +146,37 @@ def races_on(cli: Client, st: Store, d: date) -> tuple[list[dict], bool]:
     return races, complete and bool(targets)
 
 
+def repair_missing_meets(cli: Client, st: Store, start: date, end: date):
+    """修復(2026-11-17): 開催ニュースの無い開催がスケジュールから漏れていた。
+    月ごとにスケジュールを読み直し、抜けていた開催の日付を未取得に戻す（1か月1回だけ）。"""
+    from .kdreams import month_range
+    rp = st.root / "state" / "repair_schedule_v2.txt"
+    done_months = set(rp.read_text().split()) if rp.exists() else set()
+    for y, m in month_range(start, end):
+        key = f"{y}{m:02d}"
+        if key in done_months:
+            continue
+        before = set(st.meets_cache(y, m))
+        try:
+            after = meets_for_month(cli, st, y, m, refresh=True)
+        except SiteDown as e:
+            print("修復を中断:", e)
+            return
+        new = set(after) - before
+        lost = 0
+        for mid in new:
+            for dd in (after[mid].get("days") or []):
+                d = datetime.strptime(mid[2:], "%Y%m%d").date() + timedelta(days=dd - 1)
+                if d.isoformat() in st.done:
+                    st.done.discard(d.isoformat())
+                    lost += 1
+        if lost:
+            st.done_path.write_text("\n".join(sorted(st.done)) + "\n")
+        print(f"修復 {key}: 抜けていた開催 {len(new)} / 取り直す日付 {lost}", flush=True)
+        done_months.add(key)
+        rp.write_text("\n".join(sorted(done_months)) + "\n")
+
+
 def do_date(cli: Client, st: Store, d: date) -> int:
     races, complete = races_on(cli, st, d)
     if races:
@@ -190,6 +221,7 @@ def main(argv=None):
     t0 = time.time()
     end = date.fromisoformat(a.end) if a.end else today_jst() - timedelta(days=1)
     start = date.fromisoformat(a.start)
+    repair_missing_meets(cli, st, start, end)
     d = end
     while d >= start:  # 新しい日付から順に遡る
         if d.isoformat() not in st.done:
