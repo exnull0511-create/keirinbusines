@@ -31,7 +31,7 @@ for p in json.load(open("tools/gem_prompts.json")):
     for m in models:
         body = {"contents": [{"parts": [{"inline_data": {"mime_type": "video/mp4", "data": b64}, "video_metadata": {"fps": 2}}, {"text": p["prompt"]}]}],
                 "generationConfig": {"responseMimeType": "application/json", "temperature": 0.2, "mediaResolution": "MEDIA_RESOLUTION_HIGH"}}
-        for i in range(5):
+        for i in range(8):
             try:
                 r = requests.post(f"{G}/models/{m}:generateContent?key={KEY}", json=body, timeout=1200)
             except Exception as e:
@@ -42,7 +42,7 @@ for p in json.load(open("tools/gem_prompts.json")):
                 except Exception: txt = json.dumps(j)[:2000]
                 res.setdefault(rid, {})[m] = {"text": txt, "usage": j.get("usageMetadata")}
                 L(rid, m, "ok", j.get("usageMetadata", {}).get("totalTokenCount")); break
-            L(rid, m, r.status_code, r.text[:300]); time.sleep(30 * (i + 1))
+            L(rid, m, r.status_code, r.text[:300]); time.sleep(60 * (i + 1))
         (OUT / "gemini.json").write_text(json.dumps(res, ensure_ascii=False, indent=1))
         time.sleep(8)
 (OUT / "log.txt").write_text("\n".join(log))
