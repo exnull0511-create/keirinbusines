@@ -29,8 +29,8 @@ for p in json.load(open("tools/gem_prompts.json")):
     raw.unlink()
     b64 = base64.b64encode(vid.read_bytes()).decode(); vid.unlink()
     for m in models:
-        body = {"contents": [{"parts": [{"inline_data": {"mime_type": "video/mp4", "data": b64}}, {"text": p["prompt"]}]}],
-                "generationConfig": {"responseMimeType": "application/json", "temperature": 0.2}}
+        body = {"contents": [{"parts": [{"inline_data": {"mime_type": "video/mp4", "data": b64}, "video_metadata": {"fps": 2}}, {"text": p["prompt"]}]}],
+                "generationConfig": {"responseMimeType": "application/json", "temperature": 0.2, "mediaResolution": "MEDIA_RESOLUTION_HIGH"}}
         for i in range(5):
             try:
                 r = requests.post(f"{G}/models/{m}:generateContent?key={KEY}", json=body, timeout=1200)
