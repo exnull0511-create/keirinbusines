@@ -14,7 +14,7 @@ def pick(kind):
     def ver(n):
         m = re.search(r"gemini-(\d+(?:\.\d+)?)", n); return (float(m.group(1)) if m else 0, "preview" not in n, "latest" in n)
     return sorted(c, key=ver)[-1] if c else None
-models = [m for m in [pick("pro"), pick("flash")] if m]
+models = [m for m in ["gemini-3.8-flash"] if m in names] or [pick("flash")]
 L("use:", models)
 s = requests.Session(); s.headers.update({"User-Agent": "Mozilla/5.0", "Referer": "https://keirin.kdreams.jp/"})
 V = {v["race_id"]: v["video"] for v in json.load(open("tools/videos.json"))}
@@ -32,7 +32,10 @@ for p in json.load(open("tools/gem_prompts.json")):
         body = {"contents": [{"parts": [{"inline_data": {"mime_type": "video/mp4", "data": b64}}, {"text": p["prompt"]}]}],
                 "generationConfig": {"responseMimeType": "application/json", "temperature": 0.2}}
         for i in range(5):
-            r = requests.post(f"{G}/models/{m}:generateContent?key={KEY}", json=body, timeout=600)
+            try:
+                r = requests.post(f"{G}/models/{m}:generateContent?key={KEY}", json=body, timeout=1200)
+            except Exception as e:
+                L(rid, m, "exception", repr(e)[:200]); time.sleep(30); continue
             if r.status_code == 200:
                 j = r.json()
                 try: txt = "".join(x.get("text", "") for x in j["candidates"][0]["content"]["parts"])
