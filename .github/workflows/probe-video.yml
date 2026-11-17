@@ -7,13 +7,16 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
       - run: pip install requests && sudo apt-get install -y -qq ffmpeg
-      - run: python tools/probe_video.py /tmp/out || true
-      - run: |
-          cd /tmp/out && git init -q -b probe-video-out && git config user.name a && git config user.email a@a
+      - run: python tools/gemini_test.py /tmp/out || true
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      - if: always()
+        run: |
+          mkdir -p /tmp/out && cd /tmp/out && rm -f *.mp4 && git init -q -b probe-video-out && git config user.name a && git config user.email a@a
           git add -A && git commit -qm out && git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" probe-video-out
