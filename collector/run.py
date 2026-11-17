@@ -87,6 +87,15 @@ class Store:
         p.write_text(json.dumps(data, ensure_ascii=False, indent=0))
 
 
+def slug_of_code(st: "Store", code: str):
+    """場コード -> URL名（他の開催の記録から引く）"""
+    for p in (st.root / "state" / "meets").glob("*.json"):
+        for mid, v in json.loads(p.read_text()).items():
+            if mid[:2] == code and v.get("slug"):
+                return v["slug"]
+    return None
+
+
 def meets_for_month(cli: Client, st: Store, y: int, m: int, refresh: bool) -> dict:
     cache = st.meets_cache(y, m)
     if cache and not refresh:
@@ -103,8 +112,14 @@ def meets_for_month(cli: Client, st: Store, y: int, m: int, refresh: bool) -> di
         news = cli.get(f"{BASE}/kaisai/race-news/{mid}/{mid}0100/") or ""
         info = meet_info(news, mid)
         if not info.get("slug") or not info.get("days"):
-            # 開催ニュースが無い開催: 出走表のページから場名と日程を取る
-            slug = info.get("slug") or slug_in_schedule(html, mid)
+            # GI・GII は開催ニュースの代わりに番組ページ（race-program）
+            prog = cli.get(f"{BASE}/kaisai/race-program/{mid}/{mid}0100/") or ""
+            info3 = meet_info(prog, mid)
+            if info3.get("slug") and info3.get("days"):
+                info = info3
+        if not info.get("slug") or not info.get("days"):
+            # それでも無ければ出走表のページから場名と日程を取る
+            slug = info.get("slug") or slug_in_schedule(html, mid) or slug_of_code(st, mid[:2])
             if slug:
                 card = cli.get(f"{BASE}/{slug}/racecard/{mid}0100/") or ""
                 info2 = meet_info(card, mid)
@@ -150,7 +165,7 @@ def repair_missing_meets(cli: Client, st: Store, start: date, end: date):
     """修復(2026-11-17): 開催ニュースの無い開催がスケジュールから漏れていた。
     月ごとにスケジュールを読み直し、抜けていた開催の日付を未取得に戻す（1か月1回だけ）。"""
     from .kdreams import month_range
-    rp = st.root / "state" / "repair_schedule_v2.txt"
+    rp = st.root / "state" / "repair_schedule_v3.txt"
     done_months = set(rp.read_text().split()) if rp.exists() else set()
     for y, m in month_range(start, end):
         key = f"{y}{m:02d}"

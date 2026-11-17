@@ -79,7 +79,7 @@ class Client:
 def meets_in_month(html: str) -> list[str]:
     """月別スケジュールから開催ID（場コード2桁+初日8桁）を抽出。
     開催ニュースへのリンクが無い開催もあるので、出走表・結果へのリンクからも拾う。"""
-    ids = set(re.findall(r"race-news/(\d{10})/", html))
+    ids = set(re.findall(r"race-(?:news|program)/(\d{10})/", html))  # GI・GIIは race-program
     ids |= set(re.findall(r"/[a-z]+/(?:racecard|raceresult|racedetail)/(\d{10})\d{2,6}/", html))
     return sorted(ids)
 
