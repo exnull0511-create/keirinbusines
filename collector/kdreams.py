@@ -77,8 +77,16 @@ class Client:
 # ---------- スケジュール・開催 ----------
 
 def meets_in_month(html: str) -> list[str]:
-    """月別スケジュールから開催ID（場コード2桁+初日8桁）を抽出。"""
-    return sorted(set(re.findall(r"race-news/(\d{10})/", html)))
+    """月別スケジュールから開催ID（場コード2桁+初日8桁）を抽出。
+    開催ニュースへのリンクが無い開催もあるので、出走表・結果へのリンクからも拾う。"""
+    ids = set(re.findall(r"race-news/(\d{10})/", html))
+    ids |= set(re.findall(r"/[a-z]+/(?:racecard|raceresult|racedetail)/(\d{10})\d{2,6}/", html))
+    return sorted(ids)
+
+
+def slug_in_schedule(html: str, meet_id: str):
+    m = re.search(r"/([a-z]+)/(?:racecard|raceresult|racedetail)/" + meet_id, html)
+    return m.group(1) if m else None
 
 
 def meet_info(html: str, meet_id: str) -> dict:

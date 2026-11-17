@@ -19,7 +19,7 @@ import time
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
-from .kdreams import BASE, Client, SiteDown, meet_info, meets_in_month, parse_race, race_url
+from .kdreams import BASE, Client, SiteDown, meet_info, meets_in_month, parse_race, race_url, slug_in_schedule
 
 JST = timezone(timedelta(hours=9))
 
@@ -101,7 +101,15 @@ def meets_for_month(cli: Client, st: Store, y: int, m: int, refresh: bool) -> di
         if mid in cache and cache[mid].get("slug") and cache[mid].get("days") and not ongoing:
             continue
         news = cli.get(f"{BASE}/kaisai/race-news/{mid}/{mid}0100/") or ""
-        cache[mid] = meet_info(news, mid)
+        info = meet_info(news, mid)
+        if not info.get("slug") or not info.get("days"):
+            # 開催ニュースが無い開催: 出走表のページから場名と日程を取る
+            slug = info.get("slug") or slug_in_schedule(html, mid)
+            if slug:
+                card = cli.get(f"{BASE}/{slug}/racecard/{mid}0100/") or ""
+                info2 = meet_info(card, mid)
+                info = {"meet_id": mid, "slug": slug, "days": info2.get("days") or info.get("days") or []}
+        cache[mid] = info
     st.save_meets(y, m, cache)
     return cache
 
