@@ -56,7 +56,7 @@ def train_line(rs, df, combos, feats):
         X.append(a); y.append(b_); off.append(c)
     model = line.fit(np.vstack(X), np.concatenate(y), np.concatenate(off))
     print("ライン補正 学習", len(probs), "レース", cut, "〜", last)
-    return {"model": model, "feats": line.FEATS, "from": cut, "to": last, "pick": line.PICK}
+    return {"model": model, "feats": line.FEATS, "from": cut, "to": last, "pick": line.PICK, "picks": line.PICKS}
 
 
 def main(argv=None):

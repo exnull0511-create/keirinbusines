@@ -38,7 +38,8 @@ def score_races(meta, history, todays):
                         for c, a, b, m1, m3 in zip(gg.car, gg.p1, gg.p3, gg.m_win, gg.m_top3)}}
         if lm:
             s["p_base"] = [round(float(x), 6) for x in p0]
-            s["picks"] = line.picks(M[rid], p, odds, lm.get("pick", line.PICK))
+            s["picks_by"] = {k: line.picks(M[rid], p, odds, rule) for k, rule in line.PICKS.items()}
+            s["picks"] = next(iter(s["picks_by"].values()))
         out[rid] = s
     return out
 
@@ -55,7 +56,7 @@ def log_picks(data, d, rows, now):
             ai = r.get("ai") or {}
             if r["finished"] or "picks" not in ai or (r.get("close_time") and r["close_time"] <= hm):
                 continue
-            f.write(json.dumps({"race_id": r["race_id"], "at": now, "close_time": r.get("close_time"), "picks": ai["picks"]}, ensure_ascii=False) + "\n")
+            f.write(json.dumps({"race_id": r["race_id"], "at": now, "close_time": r.get("close_time"), "picks": ai["picks"], "picks_by": ai.get("picks_by", {})}, ensure_ascii=False) + "\n")
             n += 1
     return n
 

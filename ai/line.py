@@ -18,7 +18,12 @@ OB = np.array([10, 30, 50, 100, 300, 1000])
 LINE_COLS = ["l_len", "l_sum", "l_rank", "l_nlines", "h_rel", "h_nm", "s2_rel", "l_gap"]
 FEATS = ["logp", "logpq", "pat", "r1", "r2", "r3", "ob"] + [f"{c}_{k}" for k in (1, 2) for c in LINE_COLS]
 CAT_IDX = [2, 3, 4, 5]
-PICK = {"min_odds": 50, "max_odds": 300, "min_ev": 1.2}   # 検証で一番良かった買い方
+# 並行して記録する買い方（名前: 条件）。最初のものが「推奨」（picks）
+PICKS = {
+    "A_50-300倍_期待値1.2": {"min_odds": 50, "max_odds": 300, "min_ev": 1.2},   # 検証 121%（4,601点）
+    "B_10-300倍_期待値1.1": {"min_odds": 10, "max_odds": 300, "min_ev": 1.1},   # 検証 97〜110%（約1.6〜1.9万点）
+}
+PICK = next(iter(PICKS.values()))
 _PERM = {}
 
 
