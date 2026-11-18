@@ -1,0 +1,46 @@
+{
+ "8620261115020002": {
+  "gemini-3.8-flash": {
+   "text": "{\n  \"last_back_leader\": 4,\n  \"top3\": [5, 7, 6],\n  \"sb\": {\n    \"s\": null,\n    \"b\": 4\n  },\n  \"race_analysis\": {\n    \"pace\": \"速い\",\n    \"confidence\": 0.95\n  },\n  \"interactions\": [\n    {\n      \"time\": \"00:33\",\n      \"type\": \"外へ持ち出し\",\n      \"actor\": 4,\n      \"target\": 1,\n      \"result\": \"成功\",\n      \"detail\": \"後方から4番森がスパートし、前受けの1番白濱を叩いて主導権を奪う\"\n    },\n    {\n      \"time\": \"00:46\",\n      \"type\": \"内すくい\",\n      \"actor\": 1,\n      \"target\": 7,\n      \"result\": \"失敗\",\n      \"detail\": \"叩かれた1番白濱が4番森の内へ潜り込み番手奪取を狙う\"\n    },\n    {\n      \"time\": \"00:48\",\n      \"type\": \"ブロック\",\n      \"actor\": 7,\n      \"target\": 1,\n      \"result\": \"成功\",\n      \"detail\": \"7番藤田がインに入ってきた1番白濱を外から厳しく締め込み、番手を死守して1番を後退させる\"\n    },\n    {\n      \"time\": \"00:54\",\n      \"type\": \"切り替え\",\n      \"actor\": 5,\n      \"target\": 1,\n      \"result\": \"成功\",\n      \"detail\": \"5番杉山が失速した1番白濱を見切り、4番森・7番藤田の内の最短コースへ進路を取る\"\n    },\n    {\n      \"time\": \"01:00\",\n      \"type\": \"中割り\",\n      \"actor\": 5,\n      \"target\": 4,\n      \"result\": \"成功\",\n      \"detail\": \"5番杉山が4番森の内を鋭く突いて直線突き抜ける\"\n    }\n  ],\n  \"riders\": {\n    \"1\": {\n      \"waste\": 2,\n      \"trouble\": \"接触\",\n      \"trouble_cost\": 3,\n      \"reserve\": 0,\n      \"move\": \"遅い\",\n      \"true_strength\": 2,\n      \"intent\": \"先行\",\n      \"executed\": \"途中で崩れた\",\n      \"reason\": \"他ラインに先に動かれた\",\n      \"evidence\": \"00:33で4番に叩かれ、00:47でインから番手を奪いに行くも7番に競り負けて失速\"\n    },\n    \"2\": {\n      \"waste\": 1,\n      \"trouble\": \"なし\",\n      \"trouble_cost\": 0,\n      \"reserve\": 0,\n      \"move\": \"仕掛けず\",\n      \"true_strength\": 2,\n      \"evidence\": \"4番ラインの3番手を追走したが直線で伸びを欠いた\"\n    },\n    \"3\": {\n      \"waste\": 0,\n      \"trouble\": \"前が離れた\",\n      \"trouble_cost\": 0,\n      \"reserve\": 0,\n      \"move\": \"仕掛けず\",\n      \"true_strength\": 1,\n      \"evidence\": \"終始後方の単騎追走でレースに参加できず\"\n    },\n    \"4\": {\n      \"waste\": 2,\n      \"trouble\": \"なし\",\n      \"trouble_cost\": 0,\n      \"reserve\": 0,\n      \"move\": \"早い\",\n      \"true_strength\": 3,\n      \"intent\": \"カマシ\",\n      \"executed\": \"できた\",\n      \"reason\": null,\n      \"evidence\": \"00:33から一気にカマして最終バックを先頭で通過したが直線で脚が上がった\"\n    },\n    \"5\": {\n      \"waste\": 0,\n      \"trouble\": \"詰まり\",\n      \"trouble_cost\": 0,\n      \"reserve\": 2,\n      \"move\": \"適切\",\n      \"true_strength\": 5,\n      \"job\": \"自分から外した\",\n      \"evidence\": \"00:54で失速する味方を見切って内を突き、01:02の直線で鮮やかに抜け出し1着快勝\"\n    },\n    \"6\": {\n      \"waste\": 1,\n      \"trouble\": \"前が離れた\",\n      \"trouble_cost\": 1,\n      \"reserve\": 2,\n      \"move\": \"遅い\",\n      \"true_strength\": 3,\n      \"evidence\": \"前団の混乱で立ち遅れたが、直線大外から鋭い伸び脚を見せて3着に強襲\"\n    },\n    \"7\": {\n      \"waste\": 1,\n      \"trouble\": \"接触\",\n      \"trouble_cost\": 0,\n      \"reserve\": 1,\n      \"move\": \"適切\",\n      \"true_strength\": 4,\n      \"job\": \"しっかり援護\",\n      \"evidence\": \"00:48で1番のイン粘りを強烈にブロックして番手を守り、直線もしっかり踏み切って2着確保\"\n    }\n  },\n  \"better_than_result\": [\n    7,\n    6\n  ],\n  \"worse_than_result\": [\n    2\n  ]\n}",
+   "usage": {
+    "promptTokenCount": 39093,
+    "candidatesTokenCount": 1322,
+    "totalTokenCount": 42406,
+    "promptTokensDetails": [
+     {
+      "modality": "VIDEO",
+      "tokenCount": 38280
+     },
+     {
+      "modality": "TEXT",
+      "tokenCount": 813
+     }
+    ],
+    "thoughtsTokenCount": 1991,
+    "serviceTier": "standard"
+   }
+  }
+ },
+ "8620261115020010": {
+  "gemini-3.8-flash": {
+   "text": "{\n \"last_back_leader\": 7,\n \"top3\": [7, 2, 1],\n \"sb\": {\n  \"S\": null,\n  \"B\": 7\n },\n \"選手評価\": {\n  \"1\": {\n   \"waste\": 2,\n   \"trouble\": \"なし\",\n   \"trouble_cost\": 0,\n   \"reserve\": 0,\n   \"move\": \"適切\",\n   \"true_strength\": 4,\n   \"intent\": \"先行\",\n   \"executed\": \"できた\",\n   \"reason\": \"なし\",\n   \"evidence\": \"00:18付近で後方から一気にカマして打鐘で主導権を奪取。7番に捲られながらもインで粘り強く踏み留まり3着に残った。\"\n  },\n  \"2\": {\n   \"waste\": 0,\n   \"trouble\": \"なし\",\n   \"trouble_cost\": 0,\n   \"reserve\": 1,\n   \"move\": \"適切\",\n   \"true_strength\": 4,\n   \"job\": \"しっかり援護\",\n   \"evidence\": \"00:27からの7番三神の強烈なロング捲りにピタリと追走し、直線も外から迫って2着を確保した。\"\n  },\n  \"3\": {\n   \"waste\": 1,\n   \"trouble\": \"前が離れた\",\n   \"trouble_cost\": 0,\n   \"reserve\": 0,\n   \"move\": \"仕掛けず\",\n   \"true_strength\": 2,\n   \"job\": \"離れた\",\n   \"evidence\": \"00:20付近で連携していた4番福田が1番南に叩かれて後退したため、自身も後方に置かれて流れ込んだ。\"\n  },\n  \"4\": {\n   \"waste\": 1,\n   \"trouble\": \"なし\",\n   \"trouble_cost\": 0,\n   \"reserve\": 0,\n   \"move\": \"遅い\",\n   \"true_strength\": 2,\n   \"intent\": \"先行\",\n   \"executed\": \"途中で崩れた\",\n   \"reason\": \"他ラインに先に動かれた\",\n   \"evidence\": \"00:18で前受けから突っ張れず1番南に出切られ、中団から巻き返す脚もなく後方に沈んだ。\"\n  },\n  \"5\": {\n   \"waste\": 1,\n   \"trouble\": \"なし\",\n   \"trouble_cost\": 0,\n   \"reserve\": 0,\n   \"move\": \"適切\",\n   \"true_strength\": 3,\n   \"job\": \"最低限\",\n   \"evidence\": \"00:21で1番南のカマシにしっかりマークして続いたが、7番の捲りには対抗できず4着まで。\"\n  },\n  \"6\": {\n   \"waste\": 1,\n   \"trouble\": \"前が離れた\",\n   \"trouble_cost\": 0,\n   \"reserve\": 0,\n   \"move\": \"仕掛けず\",\n   \"true_strength\": 2,\n   \"evidence\": \"1番ライン3番手だったが、打鐘のカマシについていくところで車間が空き、後退した。\"\n  },\n  \"7\": {\n   \"waste\": 1,\n   \"trouble\": \"なし\",\n   \"trouble_cost\": 0,\n   \"reserve\": 1,\n   \"move\": \"早い\",\n   \"true_strength\": 5,\n   \"intent\": \"捲り\",\n   \"executed\": \"できた\",\n   \"reason\": \"なし\",\n   \"evidence\": \"00:26のホームストレッチ前から外へ持ち出し、強烈なロング捲りで1番南を完全に飲み込んで1着。\"\n  }\n },\n \"interactions\": [\n  {\n   \"time\": \"00:18\",\n   \"type\": \"外へ持ち出し\",\n   \"actor\": 1,\n   \"target\": 4,\n   \"result\": \"成功\",\n   \"detail\": \"後方から1番南が一気にスパートしてカマシを決め、4番福田を叩いて先頭に立つ\"\n  },\n  {\n   \"time\": \"00:26\",\n   \"type\": \"外へ持ち出し\",\n   \"actor\": 7,\n   \"target\": 1,\n   \"result\": \"成功\",\n   \"detail\": \"1番南が出切った直後のホーム前から7番三神が外に持ち出して捲りを開始する\"\n  },\n  {\n   \"time\": \"00:33\",\n   \"type\": \"外へ持ち出し\",\n   \"actor\": 7,\n   \"target\": 1,\n   \"result\": \"成功\",\n   \"detail\": \"7番三神が2コーナーからバックにかけて1番南を外から捲り切って先頭を奪う\"\n  },\n  {\n   \"time\": \"00:53\",\n   \"type\": \"外へ持ち出し\",\n   \"actor\": 2,\n   \"target\": 7,\n   \"result\": \"失敗\",\n   \"detail\": \"最終直線で2番櫻井が番手から外へ持ち出して差しに行くが、7番三神が押し切る\"\n  }\n ],\n \"pace\": \"速い\",\n \"confidence\": 0.9,\n \"better_than_result\": [1],\n \"worse_than_result\": [4]\n}",
+   "usage": {
+    "promptTokenCount": 34081,
+    "candidatesTokenCount": 1291,
+    "totalTokenCount": 37642,
+    "promptTokensDetails": [
+     {
+      "modality": "VIDEO",
+      "tokenCount": 33264
+     },
+     {
+      "modality": "TEXT",
+      "tokenCount": 817
+     }
+    ],
+    "thoughtsTokenCount": 2270,
+    "serviceTier": "standard"
+   }
+  }
+ }
+}
