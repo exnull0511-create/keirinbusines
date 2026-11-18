@@ -16,8 +16,12 @@ from .common import heads_of, cls
 ROLE = {0: "先頭", 1: "番手", 2: "3番手"}
 
 
+_PERM = {}
+
+
 def market_probs(r):
-    t = r["odds"]["3連単"]; n = t["n"]; perm = list(permutations(range(1, n + 1), 3))
+    t = r["odds"]["3連単"]; n = t["n"]
+    perm = _PERM.setdefault(n, list(permutations(range(1, n + 1), 3)))
     q = np.array([1 / v if v else 0.0 for v in t["v"]]); q = q / q.sum()
     w, p2, p3 = collections.Counter(), collections.Counter(), collections.Counter()
     for k, x in zip(perm, q):
@@ -42,7 +46,7 @@ def build(rs, categories=None):
         if not E:
             continue
         perm, q, W, P2, P3 = market_probs(r)
-        combos[r["race_id"]] = (perm, q, np.array([v or 0 for v in r["odds"]["3連単"]["v"]]))
+        combos[r["race_id"]] = (perm, q.astype(np.float32), np.array([v or 0 for v in r["odds"]["3連単"]["v"]], dtype=np.float32))
         _, heads = heads_of(r)
         heads_set = {l[0] for l in heads}
         res = {x["car"]: x for x in r["result"]}

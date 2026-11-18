@@ -7,7 +7,7 @@ import argparse
 import gzip
 import json
 import pickle
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import numpy as np
@@ -15,36 +15,49 @@ import numpy as np
 from collector.kdreams import Client
 from collector.run import Store, races_on, today_jst
 from .common import load_races
+from . import line
 from .features import build
+from .predict import race_probs
 
 
 def score_races(meta, history, todays):
     df, combos = build(history + todays, categories=meta["categories"])
     ids = {r["race_id"] for r in todays}
-    df = df[df.race.isin(ids)].copy()
+    df = df[df.race.isin(ids)]
     if df.empty:
         return {}
-    X = df[meta["feats"]]
-    for k, m in enumerate(meta["models"], 1):
-        df[f"p{k}"] = m.predict_proba(X)[:, 1]
-    g = df.groupby("race")
-    df["p1"] = df.p1 / g.p1.transform("sum")
-    df["p2"] = df.p2 / g.p2.transform("sum") * 2
-    df["p3"] = df.p3 / g.p3.transform("sum") * 3
-    df["r1"] = (df.p1 / df.m_win.clip(1e-4)).clip(0.2, 5)
-    df["r2"] = ((df.p2 - df.p1).clip(1e-4) / (df.m_top2 - df.m_win).clip(1e-4)).clip(0.2, 5)
-    df["r3"] = ((df.p3 - df.p2).clip(1e-4) / (df.m_top3 - df.m_top2).clip(1e-4)).clip(0.2, 5)
+    M = {r["race_id"]: r for r in todays}
+    lm = meta.get("line")
     out = {}
-    for rid, gg in df.groupby("race"):
-        perm, q, odds = combos[rid]
-        R = {c: (a, b, d) for c, a, b, d in zip(gg.car, gg.r1, gg.r2, gg.r3)}
-        f = np.array([R.get(k[0], (1, 1, 1))[0] * R.get(k[1], (1, 1, 1))[1] * R.get(k[2], (1, 1, 1))[2] for k in perm])
-        p = q * np.power(f, meta["b"])
-        p = p / p.sum()
-        out[rid] = {"p": [round(float(x), 6) for x in p], "q": [round(float(x), 6) for x in q],
-                    "riders": {int(c): {"p1": round(float(a), 4), "p3": round(float(b), 4), "m1": round(float(m1), 4), "m3": round(float(m3), 4)}
-                               for c, a, b, m1, m3 in zip(gg.car, gg.p1, gg.p3, gg.m_win, gg.m_top3)}}
+    for rid, (p, q, odds, gg) in race_probs(meta, meta["b"], df, combos).items():
+        p0 = p
+        if lm:
+            p = line.apply(lm["model"], M[rid], p0, q, odds)
+        s = {"p": [round(float(x), 6) for x in p], "q": [round(float(x), 6) for x in q],
+             "riders": {int(c): {"p1": round(float(a), 4), "p3": round(float(b), 4), "m1": round(float(m1), 4), "m3": round(float(m3), 4)}
+                        for c, a, b, m1, m3 in zip(gg.car, gg.p1, gg.p3, gg.m_win, gg.m_top3)}}
+        if lm:
+            s["p_base"] = [round(float(x), 6) for x in p0]
+            s["picks"] = line.picks(M[rid], p, odds, lm.get("pick", line.PICK))
+        out[rid] = s
     return out
+
+
+def log_picks(data, d, rows, now):
+    """ペーパートレード用: 締切前のレースの推奨買い目を、時刻とその時のオッズ付きで追記する。"""
+    path = data / "paper" / f"{d.isoformat()}.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    jst = datetime.now(timezone.utc) + timedelta(hours=9)
+    hm = jst.strftime("%H:%M")
+    n = 0
+    with open(path, "a", encoding="utf-8") as f:
+        for r in rows:
+            ai = r.get("ai") or {}
+            if r["finished"] or "picks" not in ai or (r.get("close_time") and r["close_time"] <= hm):
+                continue
+            f.write(json.dumps({"race_id": r["race_id"], "at": now, "close_time": r.get("close_time"), "picks": ai["picks"]}, ensure_ascii=False) + "\n")
+            n += 1
+    return n
 
 
 def main(argv=None):
@@ -78,7 +91,8 @@ def main(argv=None):
     out.mkdir(parents=True, exist_ok=True)
     with gzip.open(out / f"{d.isoformat()}.json.gz", "wt", encoding="utf-8") as f:
         json.dump({"date": d.isoformat(), "updated_at": now, "model_last_date": meta["last_date"], "races": rows}, f, ensure_ascii=False)
-    print(d, "races:", len(rows), "scored:", len(scores))
+    n = log_picks(a.data, d, rows, now) if d == today_jst() else 0
+    print(d, "races:", len(rows), "scored:", len(scores), "paper:", n)
 
 
 if __name__ == "__main__":

@@ -32,5 +32,7 @@ jobs:
       - run: pip install -r collector/requirements.txt
       - run: bash tools/data_branch.sh checkout
       - run: python -m collector.run collect --data data ${{ inputs.date && format('--date {0}', inputs.date) || '' }}
+      - name: ペーパートレードの集計（推奨買い目と確定結果の照合）
+        run: python -m ai.paper --data data || true
       - if: always()
         run: bash tools/data_branch.sh push "daily"
