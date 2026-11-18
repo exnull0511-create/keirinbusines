@@ -236,8 +236,10 @@ def run(a):
     (data / "video").mkdir(parents=True, exist_ok=True)
     gem = Gemini(os.environ["GEMINI_API_KEY"], a.model)
     done = done_ids(data)
-    todo = [r for r in candidates(data, a.days) if r["race_id"] not in done][: a.limit]
-    print(f"対象 {len(todo)} レース（済 {len(done)}）model={a.model} workers={a.workers}", flush=True)
+    todo = [r for r in candidates(data, a.days) if r["race_id"] not in done
+            and int(r["race_id"]) % a.shards == a.shard][: a.limit]
+    tag = f".s{a.shard}" if a.shards > 1 else ""
+    print(f"[分担 {a.shard + 1}/{a.shards}] 対象 {len(todo)} レース（済 {len(done)}）model={a.model} workers={a.workers}", flush=True)
     t_end = time.time() + a.minutes * 60
     wlock = threading.Lock()
     stats = {"ok": 0, "ng": 0, "skip": 0, "tok": 0, "top3": 0, "B": 0}
@@ -245,7 +247,7 @@ def run(a):
 
     def save(rec: dict, d: str):
         with wlock:
-            with gzip.open(data / "video" / f"{d}.jsonl.gz", "at", encoding="utf-8") as f:
+            with gzip.open(data / "video" / f"{d}{tag}.jsonl.gz", "at", encoding="utf-8") as f:
                 f.write(json.dumps(rec, ensure_ascii=False) + "\n")
             since_push[0] += 1
             if a.push_every and since_push[0] >= a.push_every:
@@ -297,6 +299,8 @@ def main(argv=None):
     q.add_argument("--workers", type=int, default=1)
     q.add_argument("--minutes", type=float, default=330)
     q.add_argument("--push-every", type=int, default=20)
+    q.add_argument("--shard", type=int, default=0)
+    q.add_argument("--shards", type=int, default=1)
     q.add_argument("--model", default=os.environ.get("GEMINI_MODEL", "gemini-3.8-flash"))
     a = p.parse_args(argv)
     if a.cmd == "run":

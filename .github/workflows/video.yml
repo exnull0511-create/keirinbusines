@@ -2,23 +2,26 @@ name: video
 on:
   workflow_dispatch:
     inputs:
-      days: { default: "30" }
-      limit: { default: "1000" }
-      workers: { default: "1" }
+      days: { default: "8" }
+      limit: { default: "100", description: "1系統あたりの上限レース数" }
+      workers: { default: "8", description: "1系統あたりの同時実行数" }
   push:
     branches: ["claude/video-kick"]
 
 permissions:
   contents: write
 
-concurrency:
-  group: video
-  cancel-in-progress: false
-
 jobs:
   video:
     runs-on: ubuntu-latest
     timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2]   # 3系統に均等に分けて同時に回す
+    concurrency:
+      group: video-${{ matrix.shard }}
+      cancel-in-progress: false
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -29,9 +32,9 @@ jobs:
       - run: pip install requests && sudo apt-get install -y -qq ffmpeg
       - run: bash tools/data_branch.sh checkout
       - run: |
-          python -m collector.video run --data data --minutes 320 \
+          python -m collector.video run --data data --minutes 320 --shard ${{ matrix.shard }} --shards 3 \
             --days "${{ github.event.inputs.days || '3' }}" \
-            --limit "${{ github.event.inputs.limit || '3' }}" \
+            --limit "${{ github.event.inputs.limit || '1' }}" \
             --workers "${{ github.event.inputs.workers || '1' }}"
       - if: always()
-        run: bash tools/data_branch.sh push "video"
+        run: bash tools/data_branch.sh push "video shard ${{ matrix.shard }}"
