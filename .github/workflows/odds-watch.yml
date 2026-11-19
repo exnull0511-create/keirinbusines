@@ -1,0 +1,43 @@
+name: odds-watch
+# 締切前のオッズ監視（collector/watch.py）。開催時間中ずっと動かし、1回の上限（約6時間）が近づいたら次の回を自分で起動する。
+# GitHubの定期実行は遅れたり飛んだりするので、起動の予備を何本か入れている（同時に動くのは1つだけ）。
+on:
+  schedule:
+    - cron: "20 23 * * *"   # 8:20 JST
+    - cron: "50 0 * * *"    # 9:50 JST（予備）
+    - cron: "20 3 * * *"    # 12:20 JST（予備）
+    - cron: "20 6 * * *"    # 15:20 JST（予備）
+    - cron: "20 9 * * *"    # 18:20 JST（予備）
+    - cron: "20 12 * * *"   # 21:20 JST（予備）
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: odds-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r collector/requirements.txt
+      - run: bash tools/data_branch.sh checkout
+      - run: python -m collector.watch --data data --max-minutes 335
+      - if: always()
+        run: |
+          cd data && git checkout -- state 2>/dev/null || true; git clean -fdq state 2>/dev/null || true; cd ..
+          bash tools/data_branch.sh push "odds watch"
+      - name: 次の回を起動
+        if: always()
+        run: |
+          if [ -f /tmp/odds_watch_continue ]; then gh workflow run odds-watch.yml --ref "${GITHUB_REF_NAME}"; fi
