@@ -1,0 +1,41 @@
+{
+ "updated_from": "2026-11-20",
+ "rules": {
+  "A_50-300倍_期待値1.2": {
+   "total": {
+    "races": 5,
+    "bets": 7,
+    "hits": 0,
+    "payout": 0,
+    "roi": 0.0
+   },
+   "months": {
+    "2026-11": {
+     "bets": 7,
+     "hits": 0,
+     "payout": 0,
+     "roi": 0.0
+    }
+   },
+   "hits": []
+  },
+  "B_10-300倍_期待値1.1": {
+   "total": {
+    "races": 15,
+    "bets": 30,
+    "hits": 0,
+    "payout": 0,
+    "roi": 0.0
+   },
+   "months": {
+    "2026-11": {
+     "bets": 30,
+     "hits": 0,
+     "payout": 0,
+     "roi": 0.0
+    }
+   },
+   "hits": []
+  }
+ }
+}
