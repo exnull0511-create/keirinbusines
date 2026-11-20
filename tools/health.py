@@ -276,10 +276,18 @@ def dashboard(data, now, W, ws, status):
             except Exception:
                 pass
         names = {r["race_id"]: f"{r['venue']}{r['race_no']}R" for r in tr}
+        # 当日一覧に無いレースは、レースIDの先頭2桁（場コード）とレース番号から名前を作る
+        code = {}
+        for f in sorted(glob.glob(str(data / "races" / "*" / "*.jsonl.gz")))[-30:]:
+            for r in read_jsonl_gz(f):
+                code.setdefault(r["race_id"][:2], r["venue"])
+
+        def name_of(rid, x):
+            return x.get("label") or names.get(rid) or (f"{code[rid[:2]]}{int(rid[-2:])}R" if rid[:2] in code else rid)
         for rid, x in last.items():
             for k, v in (x.get("picks_by") or {}).items():
                 for p in v:
-                    today_picks.append({"rule": k[:1], "race": names.get(rid, rid), "combo": p["combo"], "odds": p["odds"], "ev": p["ev"], "close": x.get("close_time")})
+                    today_picks.append({"rule": k[:1], "race": name_of(rid, x), "combo": p["combo"], "odds": p["odds"], "ev": p["ev"], "close": x.get("close_time")})
     today_picks.sort(key=lambda p: (p["close"] or "", p["rule"]))
 
     # データの量

@@ -86,7 +86,7 @@ h1 small{display:block;font-family:var(--body);font-size:12px;color:var(--muted)
 .stats b{color:var(--ink);font-weight:500}
 section h3{font-family:var(--display);font-weight:400;font-size:18px;margin:26px 0 10px}
 table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
-th,td{padding:7px 8px;border-bottom:1px solid #2c3347;text-align:left}
+th,td{padding:7px 8px;border-bottom:1px solid #2c3347;text-align:left;white-space:nowrap}
 th{color:var(--muted);font-weight:500}
 .tw{overflow-x:auto;background:#20263a;border:1px solid #30384f;border-radius:12px}
 .chip{display:inline-block;min-width:20px;text-align:center;border-radius:5px;font-weight:700;font-size:12px;padding:1px 6px}
@@ -186,7 +186,7 @@ function render(d){
   document.getElementById("board").innerHTML = tiles.join("");
   document.getElementById("office").innerHTML = (d.agents||[]).map(desk).join("");
   const picks = td.picks||[];
-  document.getElementById("picks").innerHTML = picks.length ? picks.map(p=>`<tr><td><span class="chip ${p.rule}">${p.rule}</span></td><td>${esc(p.close)}</td><td>${esc(p.race)}</td><td><b>${esc(p.combo)}</b></td><td>${p.odds}倍</td><td>${p.ev}</td></tr>`).join("")
+  document.getElementById("picks").innerHTML = picks.length ? picks.map(p=>`<tr><td><span class="chip ${p.rule}">${p.rule}</span></td><td>${esc(p.close)}</td><td>${esc(p.race)}</td><td><b>${esc(p.combo)}</b></td><td>${p.odds}倍</td><td>${Number(p.ev).toFixed(2)}</td></tr>`).join("")
     : `<tr><td colspan="6" style="color:var(--muted)">まだありません。締切3分前から判定します。</td></tr>`;
   const days = (d.coverage_days||[]);
   document.getElementById("days").innerHTML = days.length ? days.map(c=>`<tr><td>${c.date}</td><td>${c.races}</td><td>${c.near}（${pct(c.races?c.near/c.races:null)}）</td><td>${c.judged}</td></tr>`).join("")

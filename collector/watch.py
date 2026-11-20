@@ -267,7 +267,7 @@ def main(argv=None):
     ai = {"fac": {}, "line": None, "ready": False}
 
     def _score():
-        f, l = score_today(a.data, d, [r for r in races if r["race_id"] in todo])
+        f, l = score_today(a.data, d, races)   # 画面用の当日一覧は全レースで作る（引き継ぎ後も締切済みのレース名が消えないように）
         ai.update(fac=f, line=l, ready=True)
         print("採点", len(f), "レース", flush=True)
 
@@ -354,7 +354,7 @@ def main(argv=None):
                             pk = judge(ai["line"], R[rid], ai["fac"][rid], t["v"])
                             if pk is not None:
                                 with open(paper, "a", encoding="utf-8") as f:
-                                    f.write(json.dumps({"race_id": rid, "at": at.isoformat(timespec="seconds"), "src": "watch",
+                                    f.write(json.dumps({"race_id": rid, "label": x["label"], "at": at.isoformat(timespec="seconds"), "src": "watch",
                                                         "min_to_close": round(mins, 2), "close_time": x["close"].strftime("%H:%M"),
                                                         "picks": next(iter(pk.values())), "picks_by": pk}, ensure_ascii=False) + "\n")
                                 stat["judged"] += 1
