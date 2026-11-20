@@ -2,7 +2,7 @@ name: health
 # 収集の健康チェック（tools/health.py）。異常は Issue で知らせ、オッズ監視が止まっていれば再起動する。
 on:
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: "13,43 * * * *"   # 毎時13分・43分（0分・30分はGitHubが混んで飛ばされやすい）。開催中はオッズ監視からも30分ごとに起動する
   workflow_dispatch:
 
 permissions:

@@ -278,6 +278,7 @@ def main(argv=None):
     paper = a.data / "paper" / f"{d.isoformat()}.jsonl"
     paper.parent.mkdir(parents=True, exist_ok=True)
     last_push, last_stat = 0, time.time()   # 最初の1周のあとすぐ保存（状態を早く見せる）
+    last_health = time.time() - 1500         # 起動の約5分後に1回目
     stat = {"ok": 0, "same": 0, "no_html": 0, "no_odds": 0, "errors": 0, "judged": 0, "picks": 0}
     warned = set()
     ho = {"dispatched": False, "ready": None, "since": None, "checked": 0}
@@ -380,6 +381,10 @@ def main(argv=None):
         if time.time() - last_stat >= 600:
             print(now_jst().strftime("%H:%M"), "取得", stat, "残り", len(upcoming), "レース", "失敗連続", cli.fail_streak, flush=True)
             last_stat = time.time()
+        # 見張り係（health）を30分ごとに起こす。GitHubの定期実行は飛ぶことが多いため、監視が動いている間はこちらから起動する
+        if not a.no_push and time.time() - last_health >= 1800:
+            subprocess.run("gh workflow run health.yml --ref main", shell=True)
+            last_health = time.time()
         if not a.no_push and (time.time() - last_push) / 60 >= a.push_every:
             push("odds watch")
             last_push = time.time()
