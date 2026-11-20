@@ -32,7 +32,7 @@ jobs:
         with: { python-version: "3.11" }
       - run: pip install -r collector/requirements.txt
       - run: bash tools/data_branch.sh checkout
-      - run: python -m collector.watch --data data --max-minutes 335
+      - run: python -u -m collector.watch --data data --max-minutes 335
       - if: always()
         run: |
           cd data && git checkout -- state 2>/dev/null || true; git clean -fdq state 2>/dev/null || true; cd ..

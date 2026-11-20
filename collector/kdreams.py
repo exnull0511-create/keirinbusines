@@ -57,6 +57,7 @@ class Client:
             try:
                 r = self.s.get(url, timeout=30)
                 self.n += 1
+                self.last_status = r.status_code
                 time.sleep(self.sleep)
                 if r.status_code == 404:
                     self.fail_streak = 0
@@ -65,8 +66,8 @@ class Client:
                     self.fail_streak = 0
                     r.encoding = "utf-8"
                     return r.text
-            except requests.RequestException:
-                pass
+            except requests.RequestException as e:
+                self.last_status = type(e).__name__
             time.sleep(self.sleep * (i + 2) * 3)
         self.fail_streak += 1
         if self.fail_streak >= 5:

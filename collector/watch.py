@@ -67,6 +67,7 @@ def main(argv=None):
     folder = a.data / "odds_ts" / d.isoformat()
     folder.mkdir(parents=True, exist_ok=True)
     last_push, n_saved = time.time(), 0
+    stat, last_stat, warned = {"ok": 0, "same": 0, "no_html": 0, "no_odds": 0}, time.time(), set()
     while True:
         if all(x["done"] for x in todo.values()):
             break
@@ -87,6 +88,15 @@ def main(argv=None):
             r = parse_race(html, x["url"]) if html else None
             t = (r or {}).get("odds", {}).get("3連単")
             mins = (x["close"] - at).total_seconds() / 60
+            if not html:
+                stat["no_html"] += 1
+                print(f"  ! 取得失敗 {rid} あと{mins:.1f}分 状態{getattr(cli, 'last_status', '?')}", flush=True)
+            elif not t:
+                stat["no_odds"] += 1
+                if rid not in warned:
+                    warned.add(rid)
+                    title = (r or {}).get("title_raw") or html[:200].replace("\n", " ")
+                    print(f"  ! オッズなし {rid} あと{mins:.1f}分 長さ{len(html)} {title[:120]}", flush=True)
             if t:
                 key = (tuple(t["v"]), r["odds"].get("votes", {}).get("3連単"))
                 if key != x["last"]:
@@ -95,6 +105,9 @@ def main(argv=None):
                                             "min_to_close": round(mins, 2), "votes": key[1], "n": t["n"], "v": t["v"]}, ensure_ascii=False) + "\n")
                     x["last"] = key
                     n_saved += 1
+                    stat["ok"] += 1
+                else:
+                    stat["same"] += 1
             if mins < -AFTER + 0.01 or (r and r.get("result")):
                 x["done"] = True
             elif mins <= 0:
@@ -102,6 +115,10 @@ def main(argv=None):
             else:
                 step = STEP_FAST if mins <= FAST else STEP_SLOW
                 x["next"] = at + timedelta(seconds=step)
+        if time.time() - last_stat >= 600:
+            left = sum(not x["done"] for x in todo.values())
+            print(now_jst().strftime("%H:%M"), "取得", stat, "残り", left, "レース", "失敗連続", cli.fail_streak, flush=True)
+            last_stat = time.time()
         if not a.no_push and (time.time() - last_push) / 60 >= a.push_every:
             push("odds watch")
             last_push = time.time()
