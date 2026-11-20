@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>競輪AIオフィス</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=M+PLUS+1p:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* 夜のオフィス（1つの世界観で固定）。上: 全体の状態と進捗 / 中: 8つの机 / 下: 今日の推奨 */
+:root{
+  --floor:#1b1f2a; --wall:#232838; --desk:#7a5a3c; --desk-top:#9a7550; --ink:#eef0f5; --muted:#9aa3b8;
+  --lamp:#ffd27a; --screen:#7fd3ff; --good:#5fd38d; --warn:#ffb648; --bad:#ff6b6b; --off:#59607a;
+  --display:"DotGothic16","Hiragino Kaku Gothic ProN",monospace; --body:"M PLUS 1p","Hiragino Sans","Noto Sans JP",sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--floor);color:var(--ink);font-family:var(--body);}
+body{background:
+  linear-gradient(var(--wall),var(--wall)) top/100% 168px no-repeat,
+  repeating-linear-gradient(90deg,#1e2330 0 48px,#1b1f2a 48px 96px);}
+.wrap{max-width:1100px;margin:0 auto;padding:16px 16px 48px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;padding:8px 0 16px}
+h1{font-family:var(--display);font-weight:400;font-size:26px;margin:0;letter-spacing:.04em;text-wrap:balance}
+h1 small{display:block;font-family:var(--body);font-size:12px;color:var(--muted);letter-spacing:0;margin-top:4px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;font-weight:700;font-size:14px;background:#2c3348}
+.pill i{width:10px;height:10px;border-radius:50%;background:var(--good);box-shadow:0 0 8px var(--good)}
+.pill.bad i{background:var(--bad);box-shadow:0 0 8px var(--bad)}
+.board{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px}
+.tile{background:#262c3d;border:1px solid #333b52;border-radius:10px;padding:10px 12px}
+.tile b{display:block;font-family:var(--display);font-weight:400;font-size:24px;font-variant-numeric:tabular-nums}
+.tile span{font-size:12px;color:var(--muted)}
+.bar{height:8px;background:#151925;border-radius:4px;margin-top:6px;overflow:hidden}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,#6aa9ff,var(--screen));border-radius:4px}
+.alert{background:#3a2228;border:1px solid var(--bad);border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:14px}
+.alert ul{margin:4px 0 0;padding-left:18px}
+.office{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.desk{position:relative;background:#20263a;border:1px solid #30384f;border-radius:14px;padding:12px 12px 14px;overflow:hidden}
+.desk.down{border-color:var(--bad)} .desk.alert-on{border-color:var(--warn)}
+.scene{position:relative;height:118px;margin-bottom:10px;border-radius:10px;background:linear-gradient(#262d42,#1d2232)}
+.lampglow{position:absolute;inset:0;background:radial-gradient(120px 70px at 78% 30%,rgba(255,210,122,.20),transparent 70%);opacity:0;transition:opacity .4s}
+.busy .lampglow,.wait .lampglow,.alert .lampglow{opacity:1}
+.tabletop{position:absolute;left:8px;right:8px;bottom:22px;height:12px;background:var(--desk-top);border-radius:3px}
+.legs{position:absolute;left:18px;right:18px;bottom:6px;height:16px;border-left:6px solid var(--desk);border-right:6px solid var(--desk)}
+.monitor{position:absolute;left:50%;bottom:34px;width:70px;height:46px;margin-left:-6px;background:#11141d;border:3px solid #3a4258;border-radius:4px}
+.monitor::after{content:"";position:absolute;left:28px;bottom:-11px;width:8px;height:8px;background:#3a4258}
+.screen{position:absolute;inset:3px;border-radius:2px;background:#0c0f16;overflow:hidden}
+.busy .screen,.wait .screen,.alert .screen{background:#10324a;box-shadow:0 0 14px rgba(127,211,255,.35)}
+.screen s{display:block;height:3px;margin:5px 4px 0;background:var(--screen);opacity:.75;border-radius:2px;text-decoration:none}
+.busy .screen s{animation:type 1.2s steps(6) infinite}
+.screen s:nth-child(2){width:60%;animation-delay:.3s}.screen s:nth-child(3){width:80%;animation-delay:.6s}
+@keyframes type{0%{width:10%}100%{width:85%}}
+.person{position:absolute;left:22px;bottom:30px;width:44px;height:70px}
+.head{position:absolute;left:8px;top:0;width:28px;height:28px;border-radius:50%;background:#f1c9a5}
+.hair{position:absolute;left:6px;top:-3px;width:32px;height:15px;border-radius:16px 16px 4px 4px;background:var(--hair)}
+.body{position:absolute;left:2px;top:26px;width:40px;height:34px;border-radius:12px 12px 4px 4px;background:var(--shirt)}
+.arm{position:absolute;top:34px;left:30px;width:26px;height:8px;border-radius:4px;background:var(--shirt);transform-origin:left center}
+.busy .arm{animation:tap .35s ease-in-out infinite alternate}
+@keyframes tap{from{transform:rotate(-4deg)}to{transform:rotate(6deg)}}
+.off .person{opacity:.0}
+.off .chair{opacity:1}
+.chair{position:absolute;left:16px;bottom:22px;width:54px;height:36px;border-radius:8px 8px 2px 2px;background:#2c3448;opacity:.6}
+.zzz{position:absolute;left:58px;top:6px;font-family:var(--display);color:var(--muted);display:none}
+.wait.idle .zzz{display:block;animation:float 2.4s ease-in-out infinite}
+.alertmark{position:absolute;right:10px;top:8px;font-family:var(--display);font-size:22px;color:var(--bad);display:none}
+.down .alertmark,.alert .alertmark{display:block;animation:blink 1s steps(2) infinite}
+.alert .alertmark{color:var(--warn)}
+@keyframes float{0%,100%{transform:translateY(0);opacity:.4}50%{transform:translateY(-6px);opacity:1}}
+@keyframes blink{50%{opacity:.2}}
+.item{position:absolute;right:14px;bottom:34px;width:30px;height:30px}
+.away{position:absolute;left:12px;top:10px;font-size:12px;color:var(--muted);display:none;background:#151925;padding:2px 8px;border-radius:6px}
+.off .away{display:block}
+.nameplate{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.nameplate h2{font-family:var(--display);font-weight:400;font-size:18px;margin:0}
+.state{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.s-busy{background:rgba(127,211,255,.18);color:var(--screen)} .s-wait{background:rgba(95,211,141,.15);color:var(--good)}
+.s-off{background:#2a3044;color:var(--muted)} .s-down{background:rgba(255,107,107,.18);color:var(--bad)} .s-alert{background:rgba(255,182,72,.18);color:var(--warn)}
+.role{font-size:12px;color:var(--muted);margin:2px 0 8px}
+.doing{font-size:14px;line-height:1.5;min-height:42px;background:#171b28;border-radius:8px;padding:6px 10px;border-left:3px solid var(--screen)}
+.down .doing{border-left-color:var(--bad)} .off .doing{border-left-color:var(--off)}
+.meter{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px;color:var(--muted)}
+.meter .bar{flex:1;margin:0}
+.meter b{font-variant-numeric:tabular-nums;color:var(--ink);min-width:42px;text-align:right}
+.stats{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:6px;font-size:12px;color:var(--muted)}
+.stats b{color:var(--ink);font-weight:500}
+section h3{font-family:var(--display);font-weight:400;font-size:18px;margin:26px 0 10px}
+table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+th,td{padding:7px 8px;border-bottom:1px solid #2c3347;text-align:left}
+th{color:var(--muted);font-weight:500}
+.tw{overflow-x:auto;background:#20263a;border:1px solid #30384f;border-radius:12px}
+.chip{display:inline-block;min-width:20px;text-align:center;border-radius:5px;font-weight:700;font-size:12px;padding:1px 6px}
+.chip.A{background:var(--lamp);color:#2a1d05}.chip.B{background:#3b4560;color:var(--ink)}
+.foot{margin-top:20px;font-size:12px;color:var(--muted);line-height:1.7}
+.foot a{color:var(--screen)}
+button{font:inherit;color:var(--ink);background:#2c3348;border:1px solid #3a4258;border-radius:8px;padding:6px 12px;cursor:pointer}
+button:focus-visible,a:focus-visible{outline:2px solid var(--lamp);outline-offset:2px}
+.err{color:var(--warn);font-size:13px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>競輪AIオフィス<small id="upd">読み込み中…</small></h1>
+    <div style="display:flex;gap:8px;align-items:center"><span class="pill" id="pill"><i></i><span>確認中</span></span><button id="reload" type="button">更新</button></div>
+  </header>
+  <div id="alerts"></div>
+  <div class="board" id="board"></div>
+  <div class="office" id="office"></div>
+  <section>
+    <h3>今日の推奨（締切直前の判定）</h3>
+    <div class="tw"><table><thead><tr><th>買い方</th><th>締切</th><th>レース</th><th>買い目</th><th>オッズ</th><th>期待値</th></tr></thead><tbody id="picks"></tbody></table></div>
+  </section>
+  <section>
+    <h3>オッズ記録の日別</h3>
+    <div class="tw"><table><thead><tr><th>日付</th><th>レース</th><th>締切3分以内の記録</th><th>推奨の判定</th></tr></thead><tbody id="days"></tbody></table></div>
+  </section>
+  <p class="foot">データは見張り係が約30分ごとに更新します（GitHubの都合で前後します）。このページは1分ごとに読み直します。<br>
+  仕組みの中身: <a href="https://github.com/exnull0511-create/keirinbusines/actions">GitHub Actions</a> ・ 異常の通知: <a href="https://github.com/exnull0511-create/keirinbusines/issues">Issues</a></p>
+</div>
+<script>
+const SRC = "https://raw.githubusercontent.com/exnull0511-create/keirinbusines/data/health/dashboard.json";
+const LOOK = {
+  watch:{hair:"#2b2b2b",shirt:"#3d7bd9",item:'<svg viewBox="0 0 30 30"><circle cx="9" cy="17" r="6" fill="#1b1f2a" stroke="#9aa3b8" stroke-width="2"/><circle cx="21" cy="17" r="6" fill="#1b1f2a" stroke="#9aa3b8" stroke-width="2"/><rect x="13" y="14" width="4" height="4" fill="#9aa3b8"/></svg>'},
+  judge:{hair:"#7a3b1f",shirt:"#d9a03d",item:'<svg viewBox="0 0 30 30"><circle cx="15" cy="17" r="10" fill="#f4f4f4" stroke="#9aa3b8" stroke-width="2"/><path d="M15 17V10M15 17l5 3" stroke="#d24" stroke-width="2"/><rect x="12" y="3" width="6" height="3" fill="#9aa3b8"/></svg>'},
+  collect:{hair:"#3d2c1e",shirt:"#4fa86b",item:'<svg viewBox="0 0 30 30"><rect x="3" y="14" width="13" height="12" fill="#b88a55"/><rect x="14" y="8" width="13" height="18" fill="#c99b62"/><path d="M14 13h13" stroke="#8a6438"/></svg>'},
+  train:{hair:"#111",shirt:"#8a5cd6",item:'<svg viewBox="0 0 30 30"><rect x="4" y="20" width="22" height="5" fill="#d24"/><rect x="6" y="15" width="18" height="5" fill="#2a7"/><rect x="5" y="10" width="20" height="5" fill="#36c"/></svg>'},
+  weather:{hair:"#c9a23c",shirt:"#2fb3b3",item:'<svg viewBox="0 0 30 30"><path d="M3 15a12 10 0 0 1 24 0z" fill="#3d7bd9"/><path d="M15 15v9a3 3 0 0 1-5 0" stroke="#9aa3b8" stroke-width="2" fill="none"/></svg>'},
+  video:{hair:"#5a2e5a",shirt:"#d65c8a",item:'<svg viewBox="0 0 30 30"><rect x="3" y="8" width="18" height="14" rx="2" fill="#333"/><path d="M21 12l6-3v12l-6-3z" fill="#555"/><circle cx="12" cy="15" r="4" fill="#7fd3ff"/></svg>'},
+  health:{hair:"#666",shirt:"#e0663b",item:'<svg viewBox="0 0 30 30"><circle cx="12" cy="12" r="8" fill="none" stroke="#9aa3b8" stroke-width="3"/><path d="M18 18l8 8" stroke="#9aa3b8" stroke-width="4"/></svg>'},
+  report:{hair:"#d97757",shirt:"#cc785c",item:'<svg viewBox="0 0 30 30"><rect x="3" y="8" width="24" height="16" rx="2" fill="#f4f4f4"/><path d="M3 9l12 9 12-9" stroke="#9aa3b8" stroke-width="2" fill="none"/></svg>'},
+};
+const STATE = {busy:["作業中","s-busy"],wait:["待機中","s-wait"],off:["お休み","s-off"],down:["停止","s-down"],alert:["対応中","s-alert"]};
+const pct = v => v==null ? "-" : Math.round(v*100)+"%";
+const esc = s => String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function statText(v){
+  if (v && typeof v==="object" && "bets" in v) return `${v.bets}点・的中${v.hits}・回収${v.roi==null?"-":v.roi+"%"}`;
+  return v;
+}
+function desk(a){
+  const L = LOOK[a.id]||LOOK.watch, st = STATE[a.mode]||STATE.wait;
+  const idle = a.mode==="wait" && !/中$|中（/.test(a.doing) ? " idle" : "";
+  const stats = Object.entries(a.stats||{}).map(([k,v])=>`<span>${esc(k)} <b>${esc(statText(v))}</b></span>`).join("");
+  const rate = a.rate==null ? "" : `<div class="meter"><span>${esc(a.rate_label)}</span><div class="bar"><i style="width:${Math.round(a.rate*100)}%"></i></div><b>${pct(a.rate)}</b></div>`;
+  return `<article class="desk ${a.mode}${a.mode==="alert"?" alert-on":""}${idle}" aria-label="${esc(a.name)}">
+    <div class="scene ${a.mode}${idle}" style="--hair:${L.hair};--shirt:${L.shirt}">
+      <div class="lampglow"></div><div class="chair"></div>
+      <div class="person"><div class="body"></div><div class="arm"></div><div class="head"></div><div class="hair"></div></div>
+      <div class="tabletop"></div><div class="legs"></div>
+      <div class="monitor"><div class="screen"><s></s><s></s><s></s></div></div>
+      <div class="item">${L.item}</div>
+      <div class="zzz">z z</div><div class="alertmark">!</div><div class="away">退勤中</div>
+    </div>
+    <div class="nameplate"><h2>${esc(a.name)}</h2><span class="state ${st[1]}">${st[0]}</span></div>
+    <div class="role">${esc(a.role)}</div>
+    <div class="doing">${esc(a.doing)}</div>
+    ${rate}<div class="stats">${stats}</div>
+  </article>`;
+}
+async function load(){
+  try{
+    const r = await fetch(SRC+"?t="+Date.now(), {cache:"no-store"});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    render(await r.json());
+  }catch(e){
+    document.getElementById("upd").innerHTML = `<span class="err">データを読み込めませんでした（${esc(e.message)}）。少し待って「更新」を押してください。</span>`;
+  }
+}
+function render(d){
+  const t = new Date(d.updated_at);
+  const mins = Math.round((Date.now()-t)/60000);
+  document.getElementById("upd").textContent = `見張り係の最終確認 ${d.updated_at.slice(5,16).replace("T"," ")}（${mins}分前）`;
+  const pill = document.getElementById("pill");
+  const stale = mins > 120;
+  pill.className = "pill"+((d.ok && !stale)?"":" bad");
+  pill.querySelector("span").textContent = stale ? "見張り係の更新が止まっています" : (d.ok ? "全員異常なし" : "異常あり");
+  document.getElementById("alerts").innerHTML = (d.problems||[]).length ? `<div class="alert"><b>見張り係からの報告</b><ul>${d.problems.map(p=>`<li>${esc(p)}</li>`).join("")}</ul>${(d.actions||[]).length?`<div style="margin-top:6px;color:var(--muted)">自動で行ったこと: ${d.actions.map(esc).join("、")}</div>`:""}</div>` : "";
+  const td = d.today||{};
+  const tiles = [
+    `<div class="tile"><span>全体の稼働率</span><b>${pct(d.overall_rate)}</b><div class="bar"><i style="width:${Math.round((d.overall_rate||0)*100)}%"></i></div></div>`,
+    `<div class="tile"><span>今日のオッズ記録</span><b>${td.near??0}<span> / ${td.closed??0}レース</span></b><span>締切済み ${td.closed??0} / 全${td.races??0}レース</span></div>`,
+    ...(d.progress||[]).map(p=>`<div class="tile"><span>${esc(p.label)}</span><b>${(p.value??0).toLocaleString()}<span> ${esc(p.unit)}${p.goal?` / ${p.goal.toLocaleString()}`:""}</span></b>${p.goal?`<div class="bar"><i style="width:${Math.min(100,Math.round(100*(p.value||0)/p.goal))}%"></i></div>`:""}<span>${esc(p.note)}</span></div>`)
+  ];
+  document.getElementById("board").innerHTML = tiles.join("");
+  document.getElementById("office").innerHTML = (d.agents||[]).map(desk).join("");
+  const picks = td.picks||[];
+  document.getElementById("picks").innerHTML = picks.length ? picks.map(p=>`<tr><td><span class="chip ${p.rule}">${p.rule}</span></td><td>${esc(p.close)}</td><td>${esc(p.race)}</td><td><b>${esc(p.combo)}</b></td><td>${p.odds}倍</td><td>${p.ev}</td></tr>`).join("")
+    : `<tr><td colspan="6" style="color:var(--muted)">まだありません。締切3分前から判定します。</td></tr>`;
+  const days = (d.coverage_days||[]);
+  document.getElementById("days").innerHTML = days.length ? days.map(c=>`<tr><td>${c.date}</td><td>${c.races}</td><td>${c.near}（${pct(c.races?c.near/c.races:null)}）</td><td>${c.judged}</td></tr>`).join("")
+    : `<tr><td colspan="4" style="color:var(--muted)">1日通しての記録は11/20から。翌朝の収集のあとに表示されます。</td></tr>`;
+}
+document.getElementById("reload").addEventListener("click", load);
+load(); setInterval(load, 60000);
+</script>
+</body>
+</html>
