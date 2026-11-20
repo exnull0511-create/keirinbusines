@@ -1,6 +1,8 @@
 name: odds-watch
 # 締切前のオッズ監視（collector/watch.py）。開催時間中ずっと動かし、1回の上限（約6時間）が近づいたら次の回を自分で起動する。
-# GitHubの定期実行は遅れたり飛んだりするので、起動の予備を何本か入れている（同時に動くのは1つだけ）。
+# GitHubの定期実行は遅れたり飛んだりするので、起動の予備を何本か入れている（監視がすでに動いていれば予備は何もせず終わる）。
+# 引き継ぎ: 新しい回はレース一覧を取ってから「引き継ぎ待ち」に入り、前の回はそれを見て保存して終わる（詳しくは collector/watch.py）。
+# そのため同時に2つ動けるように concurrency は付けない。
 on:
   schedule:
     - cron: "20 23 * * *"   # 8:20 JST
@@ -15,10 +17,6 @@ permissions:
   contents: write
   actions: write
 
-concurrency:
-  group: odds-watch
-  cancel-in-progress: false
-
 jobs:
   watch:
     runs-on: ubuntu-latest
@@ -32,7 +30,12 @@ jobs:
         with: { python-version: "3.11" }
       - run: pip install -r collector/requirements.txt -r ai/requirements.txt
       - run: bash tools/data_branch.sh checkout
-      - run: python -u -m collector.watch --data data --max-minutes 335
+      - name: 準備
+        run: python -u -m collector.watch --data data --prepare
+      - name: 引き継ぎ待ち
+        run: python -u -m collector.watch --data data --wait
+      - name: 監視
+        run: python -u -m collector.watch --data data --max-minutes 335
       - if: always()
         run: |
           cd data && git checkout -- state 2>/dev/null || true; git clean -fdq state 2>/dev/null || true; cd ..
