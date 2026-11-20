@@ -127,14 +127,22 @@ def main(argv=None):
             todo[r["race_id"]] = {"url": r["url"], "close": c, "next": c - timedelta(minutes=WINDOW), "last": None, "done": False,
                                   "label": f"{r['venue']}{r['race_no']}R"}
     print(d, "監視対象", len(todo), "レース", flush=True)
-    status(state="scoring", note="AIで採点中", targets=len(todo))
-    fac, line = score_today(a.data, d, [r for r in races if r["race_id"] in todo]) if todo else ({}, None)
-    print("採点", len(fac), "レース", flush=True)
+    # AIの採点は数分かかるので、裏で行い、その間もオッズの記録は続ける
+    import threading
+    ai = {"fac": {}, "line": None, "ready": False}
+
+    def _score():
+        f, l = score_today(a.data, d, [r for r in races if r["race_id"] in todo])
+        ai.update(fac=f, line=l, ready=True)
+        print("採点", len(f), "レース", flush=True)
+
+    if todo:
+        threading.Thread(target=_score, daemon=True).start()
     folder = a.data / "odds_ts" / d.isoformat()
     folder.mkdir(parents=True, exist_ok=True)
     paper = a.data / "paper" / f"{d.isoformat()}.jsonl"
     paper.parent.mkdir(parents=True, exist_ok=True)
-    last_push, last_stat = time.time(), time.time()
+    last_push, last_stat = 0, time.time()   # 最初の1周のあとすぐ保存（状態を早く見せる）
     stat = {"ok": 0, "same": 0, "no_html": 0, "no_odds": 0, "errors": 0, "judged": 0, "picks": 0}
     warned = set()
     while True:
@@ -180,8 +188,8 @@ def main(argv=None):
                         x["last"] = key
                         stat["ok"] += 1
                         # 締切3分前〜締切: 推奨の判定（ペーパートレード）
-                        if 0 < mins <= FAST and rid in fac and line:
-                            pk = judge(line, R[rid], fac[rid], t["v"])
+                        if 0 < mins <= FAST and rid in ai["fac"] and ai["line"]:
+                            pk = judge(ai["line"], R[rid], ai["fac"][rid], t["v"])
                             if pk is not None:
                                 with open(paper, "a", encoding="utf-8") as f:
                                     f.write(json.dumps({"race_id": rid, "at": at.isoformat(timespec="seconds"), "src": "watch",
@@ -205,7 +213,7 @@ def main(argv=None):
                     x["done"] = True
         upcoming = sorted([x for x in todo.values() if not x["done"]], key=lambda x: x["close"])
         watching = [x for x in upcoming if x["close"] - timedelta(minutes=WINDOW) <= now_jst()]
-        status(state="watching", targets=len(todo), left=len(upcoming), stat=stat,
+        status(state="watching", targets=len(todo), left=len(upcoming), stat=stat, ai_ready=ai["ready"],
                watching=[{"race": x["label"], "close": x["close"].strftime("%H:%M")} for x in watching[:6]],
                next=[{"race": x["label"], "close": x["close"].strftime("%H:%M")} for x in upcoming[:3]])
         if time.time() - last_stat >= 600:
