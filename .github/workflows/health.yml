@@ -1,0 +1,28 @@
+name: health
+# 収集の健康チェック（tools/health.py）。異常は Issue で知らせ、オッズ監視が止まっていれば再起動する。
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+  issues: write
+
+concurrency:
+  group: health
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash tools/data_branch.sh checkout
+      - run: python3 tools/health.py --data data
+      - if: always()
+        run: bash tools/data_branch.sh push "health"
