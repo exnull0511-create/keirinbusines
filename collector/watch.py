@@ -11,6 +11,14 @@
   手動の起動（コードの更新後など）も同じ流れで引き継ぐので、今の回を止める必要はない。
   定期実行（予備）で起動され、すでに監視が動いていれば何もせず終わる。
 
+夜の待機（GitHubの定期実行は30分〜1時間半遅れたり飛んだりするので、朝の起動をそれに頼らない）
+  その日のレースが全部終わったら、終わらずに翌朝7:50まで待機する。7:50になったら次の回を起動して終わり、
+  次の回がその日のレース一覧を取って監視を始める。待機中に1回の上限が来たら次の回を起動し、次の回も7:50まで待機する。
+  夜間に起動された回（手動・予備）も7:50まで待機してから準備を始める。待機中に新しい回が来たら、古い回は何もせず終わる。
+
+AIの採点
+  起動時に採点し、その後も採点に入っていないレース（朝にまだオッズが出ていなかったレースなど）があれば30分ごとに採点し直す。
+
 オッズの記録
   締切12分前〜3分前: 1分おき / 3分前〜締切: 20秒おき / 締切2分後: 1回
   Kドリームスのオッズ更新は約1分ごとで、前回と同じなら保存しないので、記録は3分前以降も約1分おきになる。
@@ -23,7 +31,8 @@
   DIR/paper/YYYY-MM-DD.jsonl に追記する。集計（ai/paper.py）は各レースの締切前の最後の判定を使う。
 
 状態の保存: DIR/health/watch_status.json（今どのレースを見ているか、取得件数など。ダッシュボード用）
-時間切れ（GitHubの1回の上限）になったら /tmp/odds_watch_continue を作り、ワークフローが次の回を起動する。
+時間切れ（GitHubの1回の上限。ジョブ開始からの分数で数える）・夜の待機の終わりには /tmp/odds_watch_continue を作り、
+ワークフローが次の回を起動する。
 """
 import argparse
 import gzip
@@ -51,6 +60,12 @@ CALM = 4           # 引き継ぎで終わるとき、締切何分前以内の�
 CALM_WAIT = 12     # その瞬間を最大何分待つか（来なければそのまま引き継ぐ）
 WAIT_MAX = 20      # 次の回が前の回の終了を最大何分待つか（過ぎたら前の回を止める）
 WAIT_STEP = "引き継ぎ待ち"   # odds-watch.yml のステップ名（前の回はこれで次の回の準備完了を知る）
+MORNING = "07:50"  # 夜の待機を終えて当日の準備を始める時刻
+NIGHT = "23:30"    # これより後は当日の監視をしない
+LIMIT = 335        # 1回の上限（ジョブ開始から何分。GitHub の上限は360分、ワークフローの timeout は355分）
+STANDBY_MAX = 340  # 待機はジョブ開始から何分まで
+RESCORE_EVERY = 30 # 採点に入っていないレースがあるとき、何分ごとに採点し直すか
+CONTINUE = Path("/tmp/odds_watch_continue")
 RACES_CACHE = Path("/tmp/watch_races.json")
 SKIP = Path("/tmp/watch_skip")
 ACTIVE = ("queued", "in_progress", "waiting", "pending", "requested")
@@ -92,6 +107,56 @@ def successor_ready():
     return None
 
 
+def job_minutes():
+    """ジョブ開始（ワークフローの最初のステップで JOB_T0 に記録）から何分たったか。"""
+    t0 = float(os.environ.get("JOB_T0") or _T_PROC)
+    return (time.time() - t0) / 60
+
+
+_T_PROC = time.time()
+
+
+def next_morning():
+    """次の 7:50（JST）。"""
+    n = now_jst()
+    h, m = map(int, MORNING.split(":"))
+    t = n.replace(hour=h, minute=m, second=0, microsecond=0)
+    return t if n < t else t + timedelta(days=1)
+
+
+def standby(data, why):
+    """翌朝7:50まで待つ。戻り値: "morning"（7:50になった）/ "limit"（1回の上限）/ "superseded"（新しい回が来た）"""
+    until = next_morning()
+    me = int(os.environ["GITHUB_RUN_ID"])
+    print(now_jst().strftime("%H:%M"), f"{why}。{until:%m/%d %H:%M} まで待機する", flush=True)
+    try:
+        hs = data / "health"
+        hs.mkdir(parents=True, exist_ok=True)
+        (hs / "watch_status.json").write_text(json.dumps({"updated_at": now_jst().isoformat(timespec="seconds"),
+                                                          "date": until.date().isoformat(), "state": "standby",
+                                                          "note": f"夜の待機中（{until:%H:%M}に当日の準備を始める）"},
+                                                         ensure_ascii=False), encoding="utf-8")
+        push("odds watch standby")   # 見張り係が「固まった」と誤って再起動しないよう、待機中であることを保存
+    except Exception:
+        pass
+    checked = 0
+    while now_jst() < until:
+        if job_minutes() > STANDBY_MAX:
+            print(now_jst().strftime("%H:%M"), "待機中に1回の上限。次の回に待機を引き継ぐ", flush=True)
+            return "limit"
+        if time.time() - checked >= 300:
+            checked = time.time()
+            try:
+                newer = [r for r in other_runs() if r["id"] > me and r.get("event") != "schedule"]
+                if newer:
+                    print(now_jst().strftime("%H:%M"), "新しい回が来たので、この回は終わる", [r["id"] for r in newer], flush=True)
+                    return "superseded"
+            except Exception as e:
+                print("  ! 他の回の確認に失敗", e, flush=True)
+        time.sleep(30)
+    return "morning"
+
+
 def dispatch_next():
     gh_api("/actions/workflows/odds-watch.yml/dispatches", "POST", {"ref": os.environ.get("GITHUB_REF_NAME") or "main"})
 
@@ -109,9 +174,17 @@ def prepare(data):
             SKIP.write_text("1")
             print("監視はすでに動いているので、この回は何もしない", [r["id"] for r in older], flush=True)
             return
+    hm = now_jst().strftime("%H:%M")
+    if hm >= NIGHT or hm < MORNING:
+        if not in_actions():
+            return
+        res = standby(data, "夜間に起動された")
+        if res != "morning":
+            SKIP.write_text("1")
+            if res == "limit":
+                CONTINUE.write_text("1")
+            return
     d = today_jst()
-    if now_jst().strftime("%H:%M") >= "23:30":
-        return
     st, cli = Store(data), Client(sleep=1.0)
     for _ in range(3):
         try:
@@ -206,7 +279,7 @@ def judge(line, r, fac, v):
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", type=Path, required=True)
-    ap.add_argument("--max-minutes", type=float, default=335)
+    ap.add_argument("--max-minutes", type=float, default=LIMIT, help="ジョブ開始から何分で次の回に引き継ぐか")
     ap.add_argument("--push-every", type=float, default=10, help="何分ごとに data ブランチへ保存するか")
     ap.add_argument("--no-push", action="store_true")
     ap.add_argument("--prepare", action="store_true", help="レース一覧を先に取るだけ")
@@ -232,9 +305,11 @@ def main(argv=None):
         except Exception:
             pass
 
-    if now_jst().strftime("%H:%M") >= "23:30":
+    if now_jst().strftime("%H:%M") >= NIGHT:
         print("本日の監視は終了時刻を過ぎています")
         status(state="done", note="本日の監視は終了")
+        if in_actions() and standby(a.data, "本日の監視は終了") != "superseded":
+            CONTINUE.write_text("1")
         return
     st, cli = Store(a.data), Client(sleep=1.0)
     status(state="starting", note="当日のレースを取得中")
@@ -253,7 +328,14 @@ def main(argv=None):
         except Exception as e:
             print("  ! レース一覧の取得に失敗", e, flush=True)
             time.sleep(120)
-    races = races or []
+    if races is None:
+        # 一覧が取れない（サイトの障害など）。その日を丸ごと逃さないよう、少し待って次の回でやり直す
+        print("レース一覧が取れないので、5分後に次の回でやり直す", flush=True)
+        status(state="starting", note="レース一覧が取れず、やり直し待ち")
+        if in_actions():
+            time.sleep(300)
+            CONTINUE.write_text("1")
+        return
     R = {r["race_id"]: r for r in races}
     todo = {}
     for r in races:
@@ -264,12 +346,20 @@ def main(argv=None):
     print(d, "監視対象", len(todo), "レース", flush=True)
     # AIの採点は数分かかるので、裏で行い、その間もオッズの記録は続ける
     import threading
-    ai = {"fac": {}, "line": None, "ready": False}
+    ai = {"fac": {}, "line": None, "ready": False, "busy": False, "at": time.time()}
 
     def _score():
-        f, l = score_today(a.data, d, races)   # 画面用の当日一覧は全レースで作る（引き継ぎ後も締切済みのレース名が消えないように）
-        ai.update(fac=f, line=l, ready=True)
-        print("採点", len(f), "レース", flush=True)
+        ai["busy"] = True
+        try:
+            # 画面用の当日一覧は全レースで作る（引き継ぎ後も締切済みのレース名が消えないように）。
+            # R は監視中に取った最新のページで更新されるので、朝はオッズが無かったレースも後で採点できる
+            f, l = score_today(a.data, d, list(R.values()))
+            if l is not None:
+                ai["fac"].update(f)
+                ai["line"] = l
+            print(now_jst().strftime("%H:%M"), "採点", len(f), "レース", flush=True)
+        finally:
+            ai.update(ready=True, busy=False, at=time.time())
 
     if todo:
         threading.Thread(target=_score, daemon=True).start()
@@ -286,7 +376,15 @@ def main(argv=None):
     while True:
         if all(x["done"] for x in todo.values()):
             break
-        el = (time.time() - t0) / 60
+        el = job_minutes()
+        # 採点に入っていない締切前のレースがあれば、30分ごとに採点し直す（入っていないと推奨の判定ができない）
+        if ai["ready"] and not ai["busy"] and time.time() - ai["at"] >= RESCORE_EVERY * 60:
+            miss = [rid for rid, x in todo.items() if not x["done"] and rid not in ai["fac"]
+                    and (x["close"] - now_jst()).total_seconds() > (FAST + 2) * 60]
+            ai["at"] = time.time()
+            if miss:
+                print(now_jst().strftime("%H:%M"), "採点に入っていないレース", len(miss), "→ 採点し直す", flush=True)
+                threading.Thread(target=_score, daemon=True).start()
         if in_actions():
             # 上限が近づいたら次の回を起動（次の回は準備を済ませてから「引き継ぎ待ち」に入る）
             if el > a.max_minutes - HANDOVER_AT and not ho["dispatched"]:
@@ -314,7 +412,7 @@ def main(argv=None):
                     break
         if el > a.max_minutes:
             if not ho["ready"]:
-                Path("/tmp/odds_watch_continue").write_text("1")   # 次の回をワークフローで起動
+                CONTINUE.write_text("1")   # 次の回をワークフローで起動
             print("時間切れ。次の回に引き継ぎます", flush=True)
             break
         now = now_jst()
@@ -331,6 +429,8 @@ def main(argv=None):
             mins = (x["close"] - at).total_seconds() / 60
             try:
                 r = parse_race(html, x["url"]) if html else None
+                if r and r.get("entries") and r.get("race_id") == rid:
+                    R[rid] = r        # 採点し直すときに最新のページ（オッズ）を使う
                 t = (r or {}).get("odds", {}).get("3連単")
                 if not html:
                     stat["no_html"] += 1
@@ -390,9 +490,14 @@ def main(argv=None):
             last_push = time.time()
         nxt = min([x["next"] for x in todo.values() if not x["done"]], default=now_jst())
         time.sleep(min(max((nxt - now_jst()).total_seconds(), 2), 60))
-    status(state="done" if all(x["done"] for x in todo.values()) and not handed else "handover", targets=len(todo),
+    finished = all(x["done"] for x in todo.values()) and not handed
+    status(state="done" if finished else "handover", targets=len(todo),
            left=sum(not x["done"] for x in todo.values()), stat=stat)
     print("保存", stat, flush=True)
+    if finished and in_actions():
+        # 今日のレースは全部終わった。翌朝7:50まで待機して、次の回を起動する（朝の定期実行の遅れに頼らない）
+        if standby(a.data, "今日のレースは全て終了") != "superseded":
+            CONTINUE.write_text("1")
 
 
 if __name__ == "__main__":

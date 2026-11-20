@@ -9,7 +9,7 @@
 
 確認と自動対応
   1. 開催時間中（8:40〜23:20）にオッズ監視が動いているか → 止まっていれば起動
-  2. オッズ監視が固まっていないか（状態ファイルが45分以上更新なし）→ 止めて起動し直す
+  2. オッズ監視が固まっていないか（状態ファイルが45分以上更新なし）→ 止めて起動し直す（夜の待機中 state=standby は除く）
   3. オッズの記録が60分以上止まっていないか
   4. 前日のオッズ記録の取りこぼし（締切3分以内の記録があるレースが9割未満）
   5. 毎朝の収集で前日のレース結果が保存されたか → 9:00を過ぎて無く、収集が動いていなければ起動
@@ -141,7 +141,8 @@ def main():
             run = active[0]
             started = jst(run.get("run_started_at") or run["created_at"])
             age = (now - datetime.fromisoformat(ws["updated_at"])).total_seconds() / 60 if ws.get("updated_at") else None
-            if run["status"] == "in_progress" and (now - started).total_seconds() > 50 * 60 and (age is None or age > 45):
+            if run["status"] == "in_progress" and (now - started).total_seconds() > 50 * 60 and (age is None or age > 45) \
+                    and ws.get("state") != "standby":   # 夜の待機中（その日のレースが終わった後）は状態を更新しない
                 problems.append(f"オッズ監視が固まっている（状態の更新が{'なし' if age is None else f'{age:.0f}分前'}）。止めて起動し直した")
                 act("オッズ監視を再起動", lambda: (api(f"/actions/runs/{run['id']}/cancel", "POST"),
                                               api("/actions/workflows/odds-watch.yml/dispatches", "POST", {"ref": "main"})))
@@ -328,12 +329,14 @@ def dashboard(data, now, W, ws, status):
             nx = (ws.get("next") or [{}])[0]
             w_doing = f"次の締切を待っている: {nx.get('race', '-')}（{nx.get('close', '-')}）"
             w_mode = "wait"
+    elif active("odds-watch.yml") and wstate == "standby":
+        w_doing, w_mode = ws.get("note") or "夜の待機中（7:50に当日の準備を始める）", "off"
     elif active("odds-watch.yml"):
         w_doing, w_mode = {"starting": "当日のレース一覧を取得中", "scoring": "AIで当日のレースを採点中"}.get(wstate, "出勤中（準備しています）"), "busy"
     elif "08:40" <= hm <= "23:20":
         w_doing, w_mode = "止まっている（見張り係が起こしに行く）", "down"
     else:
-        w_doing, w_mode = "本日の監視は終了。明日8:20に出勤", "off"
+        w_doing, w_mode = "本日の監視は終了。明日7:50に出勤", "off"
 
     nA = sum(p["rule"] == "A" for p in today_picks)
     nB = sum(p["rule"] == "B" for p in today_picks)

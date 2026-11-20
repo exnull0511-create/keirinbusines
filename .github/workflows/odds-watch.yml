@@ -1,6 +1,7 @@
 name: odds-watch
-# 締切前のオッズ監視（collector/watch.py）。開催時間中ずっと動かし、1回の上限（約6時間）が近づいたら次の回を自分で起動する。
-# GitHubの定期実行は遅れたり飛んだりするので、起動の予備を何本か入れている（監視がすでに動いていれば予備は何もせず終わる）。
+# 締切前のオッズ監視（collector/watch.py）。1日中途切れずに動かし、1回の上限（約6時間）が近づいたら次の回を自分で起動する。
+# その日のレースが終わったら翌朝7:50まで待機して次の回を起動する（GitHubの定期実行は30分〜1時間半遅れることがあるため、朝の起動に使わない）。
+# 定期実行は止まってしまったときの予備（監視がすでに動いていれば予備は何もせず終わる）。
 # 引き継ぎ: 新しい回はレース一覧を取ってから「引き継ぎ待ち」に入り、前の回はそれを見て保存して終わる（詳しくは collector/watch.py）。
 # そのため同時に2つ動けるように concurrency は付けない。
 on:
@@ -25,6 +26,7 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
+      - run: echo "JOB_T0=$(date +%s)" >> "$GITHUB_ENV"   # 1回の上限をジョブ開始から数えるため
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
@@ -35,7 +37,7 @@ jobs:
       - name: 引き継ぎ待ち
         run: python -u -m collector.watch --data data --wait
       - name: 監視
-        run: python -u -m collector.watch --data data --max-minutes 335
+        run: python -u -m collector.watch --data data
       - if: always()
         run: |
           cd data && git checkout -- state 2>/dev/null || true; git clean -fdq state 2>/dev/null || true; cd ..
@@ -43,4 +45,7 @@ jobs:
       - name: 次の回を起動
         if: always()
         run: |
-          if [ -f /tmp/odds_watch_continue ]; then gh workflow run odds-watch.yml --ref "${GITHUB_REF_NAME}"; fi
+          # 起動に失敗すると監視が途切れるので、数回やり直す
+          if [ -f /tmp/odds_watch_continue ]; then
+            for i in 1 2 3 4 5; do gh workflow run odds-watch.yml --ref "${GITHUB_REF_NAME}" && { echo "次の回を起動"; break; }; sleep $((i * 15)); done
+          fi
