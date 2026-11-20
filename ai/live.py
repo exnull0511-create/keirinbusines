@@ -44,35 +44,11 @@ def score_races(meta, history, todays):
     return out
 
 
-def log_picks(data, d, rows, now):
-    """ペーパートレード用: 締切前のレースの推奨買い目を、時刻とその時のオッズ付きで追記する。"""
-    path = data / "paper" / f"{d.isoformat()}.jsonl"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    jst = datetime.now(timezone.utc) + timedelta(hours=9)
-    hm = jst.strftime("%H:%M")
-    n = 0
-    with open(path, "a", encoding="utf-8") as f:
-        for r in rows:
-            ai = r.get("ai") or {}
-            if r["finished"] or "picks" not in ai or (r.get("close_time") and r["close_time"] <= hm):
-                continue
-            f.write(json.dumps({"race_id": r["race_id"], "at": now, "close_time": r.get("close_time"), "picks": ai["picks"], "picks_by": ai.get("picks_by", {})}, ensure_ascii=False) + "\n")
-            n += 1
-    return n
-
-
-def main(argv=None):
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--data", type=Path, required=True)
-    ap.add_argument("--date")
-    a = ap.parse_args(argv)
-    d = date.fromisoformat(a.date) if a.date else today_jst()
-    meta = pickle.load(open(a.data / "models" / "latest.pkl", "rb"))
-    st, cli = Store(a.data), Client(sleep=1.2)
-    todays, _ = races_on(cli, st, d)
+def write_live(data, d, meta, todays):
+    """当日のレースをAIで採点し、DIR/live/日付.json.gz に保存。戻り値: race_id -> 採点結果"""
     todays = [r for r in todays if r.get("entries")]
     with_odds = [r for r in todays if r.get("odds", {}).get("3連単")]  # 前日などオッズ未発売のレースは採点しない
-    history = [r for r in load_races(a.data) if r["date"] < d.isoformat()]
+    history = [r for r in load_races(data) if r["date"] < d.isoformat()]
     history += [r for r in with_odds if r["result"]]
     scores = score_races(meta, history, with_odds) if with_odds else {}
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -88,12 +64,25 @@ def main(argv=None):
                      "n": (r["odds"].get("3連単") or {}).get("n", len(r["entries"])), "odds": (r["odds"].get("3連単") or {}).get("v", []), "ai": s,
                      "result": [{k: x[k] for k in ("rank", "car", "kimarite", "sb")} for x in r["result"]],
                      "refund": [p for p in r["refund"] if p["bet"] == "3連単"]})
-    out = a.data / "live"
+    out = data / "live"
     out.mkdir(parents=True, exist_ok=True)
     with gzip.open(out / f"{d.isoformat()}.json.gz", "wt", encoding="utf-8") as f:
         json.dump({"date": d.isoformat(), "updated_at": now, "model_last_date": meta["last_date"], "races": rows}, f, ensure_ascii=False)
-    n = log_picks(a.data, d, rows, now) if d == today_jst() else 0
-    print(d, "races:", len(rows), "scored:", len(scores), "paper:", n)
+    print(d, "races:", len(rows), "scored:", len(scores))
+    return scores
+
+
+def main(argv=None):
+    """手動用（画面の更新）。推奨の記録（ペーパートレード）は collector/watch.py が締切直前のオッズで行う。"""
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--data", type=Path, required=True)
+    ap.add_argument("--date")
+    a = ap.parse_args(argv)
+    d = date.fromisoformat(a.date) if a.date else today_jst()
+    meta = pickle.load(open(a.data / "models" / "latest.pkl", "rb"))
+    st, cli = Store(a.data), Client(sleep=1.2)
+    todays, _ = races_on(cli, st, d)
+    write_live(a.data, d, meta, todays)
 
 
 if __name__ == "__main__":

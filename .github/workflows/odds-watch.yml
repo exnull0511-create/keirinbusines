@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
-      - run: pip install -r collector/requirements.txt
+      - run: pip install -r collector/requirements.txt -r ai/requirements.txt
       - run: bash tools/data_branch.sh checkout
       - run: python -u -m collector.watch --data data --max-minutes 335
       - if: always()

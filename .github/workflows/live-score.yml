@@ -1,7 +1,6 @@
 name: live-score
 on:
-  schedule:
-    - cron: "5 0-14 * * *"   # 9:05〜23:05 JST 毎時
+  # 定期実行は止めた（2026-11-20）。採点と推奨の記録は odds-watch が締切直前に行う。画面だけ更新したいときに手動で実行。
   workflow_dispatch:
   push:
     branches: ["claude/live-kick"]
