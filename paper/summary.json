@@ -1,38 +1,82 @@
 {
- "updated_from": "2026-11-20",
+ "updated_from": "2026-11-21",
  "rules": {
   "A_50-300倍_期待値1.2": {
    "total": {
-    "races": 5,
-    "bets": 7,
+    "races": 8,
+    "bets": 10,
     "hits": 0,
     "payout": 0,
     "roi": 0.0
    },
    "months": {
     "2026-11": {
-     "bets": 7,
+     "bets": 10,
      "hits": 0,
      "payout": 0,
      "roi": 0.0
+    }
+   },
+   "drift": {
+    "total": {
+     "bets": 3,
+     "ratio_mean": 0.846,
+     "ratio_median": 0.874,
+     "down": 1.0,
+     "ev_final_mean": 1.026,
+     "keep": 0.0,
+     "threshold": 1.2
+    },
+    "days": {
+     "2026-11-20": {
+      "bets": 3,
+      "ratio_mean": 0.846,
+      "ratio_median": 0.874,
+      "down": 1.0,
+      "ev_final_mean": 1.026,
+      "keep": 0.0,
+      "threshold": 1.2
+     }
     }
    },
    "hits": []
   },
   "B_10-300倍_期待値1.1": {
    "total": {
-    "races": 15,
-    "bets": 30,
+    "races": 22,
+    "bets": 43,
     "hits": 0,
     "payout": 0,
     "roi": 0.0
    },
    "months": {
     "2026-11": {
-     "bets": 30,
+     "bets": 43,
      "hits": 0,
      "payout": 0,
      "roi": 0.0
+    }
+   },
+   "drift": {
+    "total": {
+     "bets": 13,
+     "ratio_mean": 0.822,
+     "ratio_median": 0.874,
+     "down": 0.692,
+     "ev_final_mean": 0.948,
+     "keep": 0.385,
+     "threshold": 1.1
+    },
+    "days": {
+     "2026-11-20": {
+      "bets": 13,
+      "ratio_mean": 0.822,
+      "ratio_median": 0.874,
+      "down": 0.692,
+      "ev_final_mean": 0.948,
+      "keep": 0.385,
+      "threshold": 1.1
+     }
     }
    },
    "hits": []
