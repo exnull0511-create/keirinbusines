@@ -1,17 +1,17 @@
 {
- "updated_from": "2026-11-22",
+ "updated_from": "2026-11-23",
  "rules": {
   "A_50-300倍_期待値1.2": {
    "total": {
-    "races": 15,
-    "bets": 19,
+    "races": 19,
+    "bets": 23,
     "hits": 0,
     "payout": 0,
     "roi": 0.0
    },
    "months": {
     "2026-11": {
-     "bets": 19,
+     "bets": 23,
      "hits": 0,
      "payout": 0,
      "roi": 0.0
@@ -19,12 +19,12 @@
    },
    "drift": {
     "total": {
-     "bets": 12,
-     "ratio_mean": 0.924,
-     "ratio_median": 0.939,
-     "down": 0.667,
-     "ev_final_mean": 1.169,
-     "keep": 0.5,
+     "bets": 16,
+     "ratio_mean": 0.839,
+     "ratio_median": 0.876,
+     "down": 0.75,
+     "ev_final_mean": 1.058,
+     "keep": 0.375,
      "threshold": 1.2
     },
     "days": {
@@ -45,6 +45,15 @@
       "ev_final_mean": 1.217,
       "keep": 0.667,
       "threshold": 1.2
+     },
+     "2026-11-22": {
+      "bets": 4,
+      "ratio_mean": 0.584,
+      "ratio_median": 0.647,
+      "down": 1.0,
+      "ev_final_mean": 0.724,
+      "keep": 0.0,
+      "threshold": 1.2
      }
     }
    },
@@ -52,15 +61,15 @@
   },
   "B_10-300倍_期待値1.1": {
    "total": {
-    "races": 39,
-    "bets": 80,
+    "races": 59,
+    "bets": 113,
     "hits": 0,
     "payout": 0,
     "roi": 0.0
    },
    "months": {
     "2026-11": {
-     "bets": 80,
+     "bets": 113,
      "hits": 0,
      "payout": 0,
      "roi": 0.0
@@ -68,12 +77,12 @@
    },
    "drift": {
     "total": {
-     "bets": 50,
-     "ratio_mean": 0.948,
-     "ratio_median": 1.013,
-     "down": 0.5,
-     "ev_final_mean": 1.107,
-     "keep": 0.64,
+     "bets": 83,
+     "ratio_mean": 0.91,
+     "ratio_median": 0.978,
+     "down": 0.554,
+     "ev_final_mean": 1.054,
+     "keep": 0.554,
      "threshold": 1.1
     },
     "days": {
@@ -93,6 +102,15 @@
       "down": 0.432,
       "ev_final_mean": 1.162,
       "keep": 0.73,
+      "threshold": 1.1
+     },
+     "2026-11-22": {
+      "bets": 33,
+      "ratio_mean": 0.851,
+      "ratio_median": 0.834,
+      "down": 0.636,
+      "ev_final_mean": 0.974,
+      "keep": 0.424,
       "threshold": 1.1
      }
     }
