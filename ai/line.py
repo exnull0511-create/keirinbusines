@@ -24,6 +24,17 @@ PICKS = {
     "B_10-300倍_期待値1.1": {"min_odds": 10, "max_odds": 300, "min_ev": 1.1},   # 検証 97〜110%（約1.6〜1.9万点）
 }
 PICK = next(iter(PICKS.values()))
+# 締切直前のオッズの動きを使う買い方（ペーパートレードで並行記録。2026-11-24 追加）
+#   締切3分前の時点と比べたオッズの変化 r = 今のオッズ ÷ 3分前のオッズ
+#   C / D … A / B のうち、直前にオッズが上がった目（r > 1.05、見放された目）を外す
+#   E     … AIを使わず、直前に下がり始めた目（10〜300倍、r が 0.70〜0.95）を買う
+#   根拠: 自前の監視4日分で、3分前→30秒前に上がった目は 実際/確定の見込み 0.64・回収率34%、
+#         0.5〜3割下がった目は 1.25〜2.8・回収率94〜288%（的中36回。まだ偶然の幅が大きい）
+LATE = {
+    "C_Aから見放された目を除く": {"base": "A_50-300倍_期待値1.2", "max_r": 1.05},
+    "D_Bから見放された目を除く": {"base": "B_10-300倍_期待値1.1", "max_r": 1.05},
+    "E_直前に下がり始めた目": {"min_odds": 10, "max_odds": 300, "min_r": 0.70, "max_r": 0.95},
+}
 _PERM = {}
 
 
@@ -94,6 +105,27 @@ def fit(X, y, off, seed=0):
     ds = lgb.Dataset(X, y, init_score=off, categorical_feature=CAT_IDX)
     return lgb.train(dict(objective="binary", learning_rate=0.03, num_leaves=15, min_data_in_leaf=2000, lambda_l2=10,
                           feature_fraction=0.8, bagging_fraction=0.8, bagging_freq=1, verbose=-1, seed=seed), ds, num_boost_round=300)
+
+
+def late_picks(r, by, odds, ref):
+    """締切直前の動きを使う買い方 C/D/E。by: A/B の判定結果、ref: 締切3分前ごろのオッズ（車番の順列順）"""
+    o = np.asarray(odds, float)
+    ref = np.asarray(ref, float)
+    if len(ref) != len(o):
+        return {}
+    ratio = np.where((ref > 0) & (o > 0), o / np.where(ref > 0, ref, 1), 0)
+    k = perm_of(r["odds"]["3連単"]["n"])
+    ix = {"-".join(map(str, c)): i for i, c in enumerate(k)}
+    out = {}
+    for name, rule in LATE.items():
+        if "base" in rule:
+            out[name] = [dict(x, r=round(float(ratio[ix[x["combo"]]]), 3)) for x in by.get(rule["base"], [])
+                         if 0 < ratio[ix[x["combo"]]] <= rule["max_r"]]
+        else:
+            sel = np.where((o >= rule["min_odds"]) & (o < rule["max_odds"]) & (ratio >= rule["min_r"]) & (ratio <= rule["max_r"]))[0]
+            out[name] = [{"combo": "-".join(map(str, k[i])), "odds": round(float(o[i]), 1), "r": round(float(ratio[i]), 3)}
+                         for i in sorted(sel, key=lambda i: ratio[i])]
+    return out
 
 
 def picks(r, p, odds, rule=PICK):

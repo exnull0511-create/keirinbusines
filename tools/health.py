@@ -266,6 +266,7 @@ def dashboard(data, now, W, ws, status):
         return {"bets": t.get("bets", 0), "hits": t.get("hits", 0), "roi": t.get("roi")}
 
     today_picks = []
+    n_e = 0
     pf = data / "paper" / f"{today}.jsonl"
     if pf.exists():
         last = {}
@@ -288,6 +289,9 @@ def dashboard(data, now, W, ws, status):
         for rid, x in last.items():
             for k, v in (x.get("picks_by") or {}).items():
                 for p in v:
+                    if k.startswith("E"):   # Eは点数が多いので一覧には出さず数だけ数える
+                        n_e += 1
+                        continue
                     today_picks.append({"rule": k[:1], "race": name_of(rid, x), "combo": p["combo"], "odds": p["odds"], "ev": p["ev"], "close": x.get("close_time")})
     today_picks.sort(key=lambda p: (p["close"] or "", p["rule"]))
 
@@ -338,9 +342,8 @@ def dashboard(data, now, W, ws, status):
     else:
         w_doing, w_mode = "本日の監視は終了。明日7:50に出勤", "off"
 
-    nA = sum(p["rule"] == "A" for p in today_picks)
-    nB = sum(p["rule"] == "B" for p in today_picks)
-    j_doing = (f"今日の推奨 A {nA}点・B {nB}点" if today_picks else
+    cnt = {c: sum(p["rule"] == c for p in today_picks) for c in "ABCD"}
+    j_doing = (f"今日 A{cnt['A']}・B{cnt['B']}・C{cnt['C']}・D{cnt['D']}・E{n_e}点" if today_picks or n_e else
                ("締切3分前から判定しています（今日はまだ推奨なし）" if w_mode in ("busy", "wait") else "待機中"))
     j_mode = "busy" if w_mode == "busy" else ("wait" if w_mode == "wait" else w_mode)
 
@@ -357,7 +360,7 @@ def dashboard(data, now, W, ws, status):
          "stats": {"今日の記録": f"{tc['near']}/{tc['races']}レース", "今回の取得": (ws.get("stat") or {}).get("ok", 0)}},
         {"id": "judge", "name": "直前判定係", "role": "締切直前のオッズで推奨A/Bを判定", "mode": j_mode, "doing": j_doing,
          "rate": judge_rate, "rate_label": "判定できた率（7日）",
-         "stats": {"A 累計": rule_line(RULE_A), "B 累計": rule_line(RULE_B)}},
+         "stats": {f"{k[0]} 累計": rule_line(k) for k in sorted(rules)} or {"A 累計": rule_line(RULE_A), "B 累計": rule_line(RULE_B)}},
         {"id": "collect", "name": "収集係", "role": "毎朝、前日の全レースの結果と確定オッズを保存", "mode": "busy" if active("collect.yml") else "wait",
          "doing": col_doing, "rate": rate("collect.yml"), "rate_label": "成功率（直近14回）", "stats": {"保存済み": f"{n_races:,}レース"}, "last": col},
         {"id": "train", "name": "学習係", "role": "毎週、確率AIとライン補正を学習し直す", "mode": "busy" if active("train-ai.yml") else "wait",
@@ -381,7 +384,7 @@ def dashboard(data, now, W, ws, status):
         "ok": status["ok"], "problems": status["problems"], "actions": status["actions"],
         "overall_rate": sum(rates) / len(rates) if rates else None,
         "agents": agents,
-        "today": {"date": today, "races": len(tr), "closed": tc["races"], "near": tc["near"], "judged": tc["judged"], "picks": today_picks[:40]},
+        "today": {"date": today, "races": len(tr), "closed": tc["races"], "near": tc["near"], "judged": tc["judged"], "picks": today_picks[:60], "n_e": n_e},
         "progress": [
             {"label": "レースのデータベース", "value": n_races, "unit": "レース", "note": "2024年1月から。毎朝追加"},
             {"label": "締切前オッズの記録", "value": len(ts_days), "unit": "日", "goal": 60, "note": f"{ts_races:,}レース分。60日分たまったら確率への組み込みを検証"},

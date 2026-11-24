@@ -90,7 +90,7 @@ th,td{padding:7px 8px;border-bottom:1px solid #2c3347;text-align:left;white-spac
 th{color:var(--muted);font-weight:500}
 .tw{overflow-x:auto;background:#20263a;border:1px solid #30384f;border-radius:12px}
 .chip{display:inline-block;min-width:20px;text-align:center;border-radius:5px;font-weight:700;font-size:12px;padding:1px 6px}
-.chip.A{background:var(--lamp);color:#2a1d05}.chip.B{background:#3b4560;color:var(--ink)}
+.chip.A{background:var(--lamp);color:#2a1d05}.chip.B{background:#3b4560;color:var(--ink)}.chip.C{background:#e0a64a;color:#2a1d05}.chip.D{background:#55607e;color:var(--ink)}
 .foot{margin-top:20px;font-size:12px;color:var(--muted);line-height:1.7}
 .foot a{color:var(--screen)}
 button{font:inherit;color:var(--ink);background:#2c3348;border:1px solid #3a4258;border-radius:8px;padding:6px 12px;cursor:pointer}
@@ -110,6 +110,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--lamp);outline-offse
   <div class="office" id="office"></div>
   <section>
     <h3>今日の推奨（締切直前の判定）</h3>
+    <p class="foot" style="margin:0 0 8px">A/B: AIの期待値。C/D: A/Bから直前にオッズが上がった目を除いたもの。E: AIを使わず直前に下がり始めた目（点数が多いので数だけ表示: <b id="ne">0</b>点）</p>
     <div class="tw"><table><thead><tr><th>買い方</th><th>締切</th><th>レース</th><th>買い目</th><th>オッズ</th><th>期待値</th></tr></thead><tbody id="picks"></tbody></table></div>
   </section>
   <section>
@@ -186,7 +187,8 @@ function render(d){
   document.getElementById("board").innerHTML = tiles.join("");
   document.getElementById("office").innerHTML = (d.agents||[]).map(desk).join("");
   const picks = td.picks||[];
-  document.getElementById("picks").innerHTML = picks.length ? picks.map(p=>`<tr><td><span class="chip ${p.rule}">${p.rule}</span></td><td>${esc(p.close)}</td><td>${esc(p.race)}</td><td><b>${esc(p.combo)}</b></td><td>${p.odds}倍</td><td>${Number(p.ev).toFixed(2)}</td></tr>`).join("")
+  document.getElementById("ne").textContent = td.n_e ?? 0;
+  document.getElementById("picks").innerHTML = picks.length ? picks.map(p=>`<tr><td><span class="chip ${p.rule}">${p.rule}</span></td><td>${esc(p.close)}</td><td>${esc(p.race)}</td><td><b>${esc(p.combo)}</b></td><td>${p.odds}倍</td><td>${p.ev==null?"-":Number(p.ev).toFixed(2)}</td></tr>`).join("")
     : `<tr><td colspan="6" style="color:var(--muted)">まだありません。締切3分前から判定します。</td></tr>`;
   const days = (d.coverage_days||[]);
   document.getElementById("days").innerHTML = days.length ? days.map(c=>`<tr><td>${c.date}</td><td>${c.races}</td><td>${c.near}（${pct(c.races?c.near/c.races:null)}）</td><td>${c.judged}</td></tr>`).join("")

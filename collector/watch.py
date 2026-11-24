@@ -263,8 +263,8 @@ def score_today(data, d, races):
         return {}, None
 
 
-def judge(line, r, fac, v):
-    """その時点のオッズで推奨A/Bを判定。"""
+def judge(line, r, fac, v, ref=None):
+    """その時点のオッズで推奨A/Bを判定。ref（締切3分前ごろのオッズ）があれば、直前の動きを使う買い方C/D/Eも判定。"""
     o = np.array([x or 0 for x in v], float)
     if len(o) != len(fac):
         return None
@@ -273,7 +273,10 @@ def judge(line, r, fac, v):
         return None
     p = q / q.sum() * fac
     p = p / p.sum() if p.sum() > 0 else p
-    return {k: line.picks(r, p, o, rule) for k, rule in line.PICKS.items()}
+    by = {k: line.picks(r, p, o, rule) for k, rule in line.PICKS.items()}
+    if ref is not None and hasattr(line, "late_picks"):
+        by.update(line.late_picks(r, by, o, ref))
+    return by
 
 
 def main(argv=None):
@@ -449,9 +452,11 @@ def main(argv=None):
                                                 "min_to_close": round(mins, 2), "votes": key[1], "n": t["n"], "v": t["v"]}, ensure_ascii=False) + "\n")
                         x["last"] = key
                         stat["ok"] += 1
+                        if mins >= 2.5:
+                            x["ref"] = t["v"]   # 締切3分前ごろのオッズ（直前の動きの基準）
                         # 締切3分前〜締切: 推奨の判定（ペーパートレード）
                         if 0 < mins <= FAST and rid in ai["fac"] and ai["line"]:
-                            pk = judge(ai["line"], R[rid], ai["fac"][rid], t["v"])
+                            pk = judge(ai["line"], R[rid], ai["fac"][rid], t["v"], x.get("ref"))
                             if pk is not None:
                                 with open(paper, "a", encoding="utf-8") as f:
                                     f.write(json.dumps({"race_id": rid, "label": x["label"], "at": at.isoformat(timespec="seconds"), "src": "watch",
