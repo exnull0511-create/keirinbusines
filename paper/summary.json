@@ -1,17 +1,17 @@
 {
- "updated_from": "2026-11-23",
+ "updated_from": "2026-11-24",
  "rules": {
   "A_50-300倍_期待値1.2": {
    "total": {
-    "races": 19,
-    "bets": 23,
+    "races": 24,
+    "bets": 28,
     "hits": 0,
     "payout": 0,
     "roi": 0.0
    },
    "months": {
     "2026-11": {
-     "bets": 23,
+     "bets": 28,
      "hits": 0,
      "payout": 0,
      "roi": 0.0
@@ -19,12 +19,12 @@
    },
    "drift": {
     "total": {
-     "bets": 16,
-     "ratio_mean": 0.839,
-     "ratio_median": 0.876,
-     "down": 0.75,
-     "ev_final_mean": 1.058,
-     "keep": 0.375,
+     "bets": 21,
+     "ratio_mean": 0.866,
+     "ratio_median": 0.879,
+     "down": 0.714,
+     "ev_final_mean": 1.093,
+     "keep": 0.429,
      "threshold": 1.2
     },
     "days": {
@@ -54,6 +54,15 @@
       "ev_final_mean": 0.724,
       "keep": 0.0,
       "threshold": 1.2
+     },
+     "2026-11-23": {
+      "bets": 5,
+      "ratio_mean": 0.954,
+      "ratio_median": 0.951,
+      "down": 0.6,
+      "ev_final_mean": 1.205,
+      "keep": 0.6,
+      "threshold": 1.2
      }
     }
    },
@@ -61,28 +70,28 @@
   },
   "B_10-300倍_期待値1.1": {
    "total": {
-    "races": 59,
-    "bets": 113,
-    "hits": 0,
-    "payout": 0,
-    "roi": 0.0
+    "races": 70,
+    "bets": 138,
+    "hits": 1,
+    "payout": 1700,
+    "roi": 12.3
    },
    "months": {
     "2026-11": {
-     "bets": 113,
-     "hits": 0,
-     "payout": 0,
-     "roi": 0.0
+     "bets": 138,
+     "hits": 1,
+     "payout": 1700,
+     "roi": 12.3
     }
    },
    "drift": {
     "total": {
-     "bets": 83,
-     "ratio_mean": 0.91,
-     "ratio_median": 0.978,
-     "down": 0.554,
-     "ev_final_mean": 1.054,
-     "keep": 0.554,
+     "bets": 108,
+     "ratio_mean": 0.926,
+     "ratio_median": 0.985,
+     "down": 0.546,
+     "ev_final_mean": 1.074,
+     "keep": 0.574,
      "threshold": 1.1
     },
     "days": {
@@ -112,10 +121,28 @@
       "ev_final_mean": 0.974,
       "keep": 0.424,
       "threshold": 1.1
+     },
+     "2026-11-23": {
+      "bets": 25,
+      "ratio_mean": 0.981,
+      "ratio_median": 1.0,
+      "down": 0.52,
+      "ev_final_mean": 1.142,
+      "keep": 0.64,
+      "threshold": 1.1
      }
     }
    },
-   "hits": []
+   "hits": [
+    {
+     "date": "2026-11-23",
+     "venue": "奈良",
+     "race_no": 3,
+     "combo": "2-5-1",
+     "odds_at_log": 26.8,
+     "payout": 1700
+    }
+   ]
   }
  }
 }
