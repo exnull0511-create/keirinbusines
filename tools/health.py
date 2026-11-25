@@ -178,6 +178,14 @@ def main():
         if not col_active:
             act("毎朝の収集を起動", lambda: api("/actions/workflows/collect.yml/dispatches", "POST", {"ref": "main"}))
 
+    # 5b. ペーパートレードの集計が毎朝更新されているか（収集の中で動くが、失敗しても収集は止まらないため）
+    try:
+        gen = json.load(open(a.data / "paper" / "summary.json")).get("generated_at")
+        if hm >= "10:00" and ydone and (not gen or (now - datetime.fromisoformat(gen)).total_seconds() > 26 * 3600):
+            problems.append(f"ペーパートレードの集計（paper/summary.json）が更新されていない（最後 {gen[:16] if gen else '不明'}）。毎朝の収集の「ペーパートレードの集計」の行を確認")
+    except Exception:
+        pass
+
     # 6. AIの学習
     tr_ok = [r for r in W["train-ai.yml"] if r["conclusion"] == "success"]
     if not tr_ok or (now - jst(tr_ok[0]["created_at"])).days >= 8:

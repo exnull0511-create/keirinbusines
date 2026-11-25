@@ -60,7 +60,9 @@ def main(argv=None):
         by = x.get("picks_by") or {"A_50-300倍_期待値1.2": x.get("picks", [])}   # 初日の記録は推奨だけ
         for k, v in by.items():
             rules.setdefault(k, []).append((x["race_id"], v, x.get("src")))
-    out = {"updated_from": days[-1] if days else None, "rules": {}}
+    from datetime import datetime, timedelta, timezone
+    out = {"updated_from": days[-1] if days else None, "rules": {},
+           "generated_at": datetime.now(timezone(timedelta(hours=9))).isoformat(timespec="seconds")}   # 見張り係が古さを確認する
     for name, items in rules.items():
         month = collections.defaultdict(lambda: [0, 0, 0])
         hits, total, races = [], [0, 0, 0], 0
