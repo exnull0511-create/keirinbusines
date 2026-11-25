@@ -8,6 +8,7 @@
   オッズ監視が締切直前に判定した推奨（src=watch）について、判定時のオッズと確定オッズを比べる。
   ratio = 確定 ÷ 判定時、ev_final = 判定時の期待値 × ratio（確定オッズで買えたときの期待値）。
   total（累計）と days（日ごと）に、点数・ratio の平均と中央値・下がった割合・確定でも基準の期待値以上だった割合。
+  買い方 E（AIを使わない）は期待値を持たないので、ev_final は 0 になる（ratio だけ見る）。
 """
 import argparse
 import collections
@@ -64,7 +65,7 @@ def main(argv=None):
         month = collections.defaultdict(lambda: [0, 0, 0])
         hits, total, races = [], [0, 0, 0], 0
         m_ = re.search(r"期待値([0-9.]+)", name)
-        thr = float(m_.group(1)) if m_ else 1.0
+        thr = float(m_.group(1)) if m_ else {"C": 1.2, "D": 1.1}.get(name[:1], 1.0)   # C/D は元の A/B の基準
         drift = collections.defaultdict(list)
         for rid, pks, src in items:
             if rid not in res or not pks:
@@ -77,7 +78,7 @@ def main(argv=None):
                     f = t["v"][i] if i is not None and i < len(t["v"]) else None
                     if f and pk.get("odds"):
                         ratio = f / pk["odds"]
-                        drift[res[rid][0]].append((ratio, pk["ev"] * ratio))
+                        drift[res[rid][0]].append((ratio, (pk.get("ev") or 0) * ratio))   # E は期待値なし
             races += 1
             d, win, venue, no = res[rid]
             for pk in pks:
