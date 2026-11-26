@@ -15,6 +15,7 @@
   その日のレースが全部終わったら、終わらずに翌朝7:50まで待機する。7:50になったら次の回を起動して終わり、
   次の回がその日のレース一覧を取って監視を始める。待機中に1回の上限が来たら次の回を起動し、次の回も7:50まで待機する。
   夜間に起動された回（手動・予備）も7:50まで待機してから準備を始める。待機中に新しい回が来たら、古い回は何もせず終わる。
+  予備の定期実行は、前の回が動いていても最大2時間は控えて様子を見て、前の回が消えたら自分が引き継ぐ。
 
 AIの採点
   起動時に採点し、その後も採点に入っていないレース（朝にまだオッズが出ていなかったレースなど）があれば30分ごとに採点し直す。
@@ -61,6 +62,7 @@ CALM_WAIT = 12     # その瞬間を最大何分待つか（来なければそ�
 WAIT_MAX = 20      # 次の回が前の回の終了を最大何分待つか（過ぎたら前の回を止める）
 WAIT_STEP = "引き継ぎ待ち"   # odds-watch.yml のステップ名（前の回はこれで次の回の準備完了を知る）
 MORNING = "07:50"  # 夜の待機を終えて当日の準備を始める時刻
+GUARD_MAX = 120   # 予備の定期実行が、前の回の様子を見て控える最長の時間（分）
 NIGHT = "23:30"    # これより後は当日の監視をしない
 LIMIT = 335        # 1回の上限（ジョブ開始から何分。GitHub の上限は360分、ワークフローの timeout は355分）
 STANDBY_MAX = 340  # 待機はジョブ開始から何分まで
@@ -171,9 +173,21 @@ def prepare(data):
             print("  ! 他の回の確認に失敗", e, flush=True)
             older = []
         if older:
-            SKIP.write_text("1")
-            print("監視はすでに動いているので、この回は何もしない", [r["id"] for r in older], flush=True)
-            return
+            # すぐには引き下がらず、しばらく予備として控える。前の回が途中で消えたら（取り消し・失敗）、この回が引き継ぐ。
+            # （11/26 朝、予備が「動いている」と見て引き下がった直後に前の回が取り消され、監視が丸ごと止まったため）
+            print("監視はすでに動いている。予備として最大2時間控える", [r["id"] for r in older], flush=True)
+            t_guard = time.time()
+            while older and time.time() - t_guard < GUARD_MAX * 60:
+                time.sleep(60)
+                try:
+                    older = [r for r in other_runs() if r["id"] < int(os.environ["GITHUB_RUN_ID"])]
+                except Exception as e:
+                    print("  ! 他の回の確認に失敗", e, flush=True)
+            if older:
+                SKIP.write_text("1")
+                print("前の回は動き続けているので、この回は何もしない", [r["id"] for r in older], flush=True)
+                return
+            print(now_jst().strftime("%H:%M"), "前の回がいなくなったので、この回が引き継ぐ", flush=True)
     hm = now_jst().strftime("%H:%M")
     if hm >= NIGHT or hm < MORNING:
         if not in_actions():
