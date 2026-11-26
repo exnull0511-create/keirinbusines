@@ -1,0 +1,29 @@
+name: paper-today
+# 当日の途中経過（ai/paper_today.py）。推奨があった締切済みのレースだけ結果を取りに行く。手動で実行。
+on:
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "日付（空なら今日）"
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  today:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r collector/requirements.txt
+      - run: bash tools/data_branch.sh checkout
+      - run: python -u -m ai.paper_today --data data ${{ inputs.date && format('--date {0}', inputs.date) || '' }}
+      - if: always()
+        run: |
+          cd data && git checkout -- state 2>/dev/null || true; git clean -fdq state 2>/dev/null || true; cd ..
+          bash tools/data_branch.sh push "paper today"
