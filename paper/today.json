@@ -1,0 +1,58 @@
+{
+ "date": "2026-11-26",
+ "updated_at": "2026-11-26T18:51+09:00",
+ "rules": {
+  "A_50-300倍_期待値1.2": {
+   "races": 2,
+   "bets": 3,
+   "hits": 0,
+   "payout": 0,
+   "roi": 0.0
+  },
+  "B_10-300倍_期待値1.1": {
+   "races": 9,
+   "bets": 20,
+   "hits": 0,
+   "payout": 0,
+   "roi": 0.0
+  },
+  "C_Aから見放された目を除く": {
+   "races": 2,
+   "bets": 3,
+   "hits": 0,
+   "payout": 0,
+   "roi": 0.0
+  },
+  "D_Bから見放された目を除く": {
+   "races": 6,
+   "bets": 13,
+   "hits": 0,
+   "payout": 0,
+   "roi": 0.0
+  },
+  "E_直前に下がり始めた目": {
+   "races": 51,
+   "bets": 467,
+   "hits": 2,
+   "payout": 4570,
+   "roi": 9.8
+  }
+ },
+ "hits": [
+  {
+   "rule": "E",
+   "race": "小松島5R",
+   "combo": "3-5-1",
+   "odds_at_judge": 13.5,
+   "payout": 1370
+  },
+  {
+   "rule": "E",
+   "race": "富山9R",
+   "combo": "2-5-1",
+   "odds_at_judge": 32.3,
+   "payout": 3200
+  }
+ ],
+ "pending": 1
+}
