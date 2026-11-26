@@ -3,15 +3,15 @@
  "rules": {
   "A_50-300倍_期待値1.2": {
    "total": {
-    "races": 25,
-    "bets": 29,
+    "races": 26,
+    "bets": 30,
     "hits": 0,
     "payout": 0,
     "roi": 0.0
    },
    "months": {
     "2026-11": {
-     "bets": 29,
+     "bets": 30,
      "hits": 0,
      "payout": 0,
      "roi": 0.0
@@ -19,12 +19,12 @@
    },
    "drift": {
     "total": {
-     "bets": 22,
-     "ratio_mean": 0.852,
-     "ratio_median": 0.876,
-     "down": 0.727,
-     "ev_final_mean": 1.074,
-     "keep": 0.409,
+     "bets": 23,
+     "ratio_mean": 0.866,
+     "ratio_median": 0.879,
+     "down": 0.696,
+     "ev_final_mean": 1.092,
+     "keep": 0.435,
      "threshold": 1.2
     },
     "days": {
@@ -72,6 +72,15 @@
       "ev_final_mean": 0.674,
       "keep": 0.0,
       "threshold": 1.2
+     },
+     "2026-11-25": {
+      "bets": 1,
+      "ratio_mean": 1.177,
+      "ratio_median": 1.177,
+      "down": 0.0,
+      "ev_final_mean": 1.481,
+      "keep": 1.0,
+      "threshold": 1.2
      }
     }
    },
@@ -79,28 +88,28 @@
   },
   "B_10-300倍_期待値1.1": {
    "total": {
-    "races": 77,
-    "bets": 146,
+    "races": 85,
+    "bets": 158,
     "hits": 1,
     "payout": 1700,
-    "roi": 11.6
+    "roi": 10.8
    },
    "months": {
     "2026-11": {
-     "bets": 146,
+     "bets": 158,
      "hits": 1,
      "payout": 1700,
-     "roi": 11.6
+     "roi": 10.8
     }
    },
    "drift": {
     "total": {
-     "bets": 116,
-     "ratio_mean": 0.918,
-     "ratio_median": 0.979,
-     "down": 0.56,
-     "ev_final_mean": 1.064,
-     "keep": 0.552,
+     "bets": 128,
+     "ratio_mean": 0.926,
+     "ratio_median": 0.98,
+     "down": 0.547,
+     "ev_final_mean": 1.073,
+     "keep": 0.555,
      "threshold": 1.1
     },
     "days": {
@@ -148,6 +157,15 @@
       "ev_final_mean": 0.924,
       "keep": 0.25,
       "threshold": 1.1
+     },
+     "2026-11-25": {
+      "bets": 12,
+      "ratio_mean": 1.003,
+      "ratio_median": 1.097,
+      "down": 0.417,
+      "ev_final_mean": 1.157,
+      "keep": 0.583,
+      "threshold": 1.1
      }
     }
    },
@@ -164,32 +182,15 @@
   },
   "C_Aから見放された目を除く": {
    "total": {
-    "races": 0,
-    "bets": 0,
-    "hits": 0,
-    "payout": 0,
-    "roi": null
-   },
-   "months": {},
-   "drift": {
-    "total": {
-     "bets": 0
-    },
-    "days": {}
-   },
-   "hits": []
-  },
-  "D_Bから見放された目を除く": {
-   "total": {
-    "races": 2,
-    "bets": 3,
+    "races": 1,
+    "bets": 1,
     "hits": 0,
     "payout": 0,
     "roi": 0.0
    },
    "months": {
     "2026-11": {
-     "bets": 3,
+     "bets": 1,
      "hits": 0,
      "payout": 0,
      "roi": 0.0
@@ -197,12 +198,52 @@
    },
    "drift": {
     "total": {
-     "bets": 3,
-     "ratio_mean": 0.872,
-     "ratio_median": 0.688,
-     "down": 0.667,
-     "ev_final_mean": 0.99,
-     "keep": 0.333,
+     "bets": 1,
+     "ratio_mean": 1.177,
+     "ratio_median": 1.177,
+     "down": 0.0,
+     "ev_final_mean": 1.481,
+     "keep": 1.0,
+     "threshold": 1.2
+    },
+    "days": {
+     "2026-11-25": {
+      "bets": 1,
+      "ratio_mean": 1.177,
+      "ratio_median": 1.177,
+      "down": 0.0,
+      "ev_final_mean": 1.481,
+      "keep": 1.0,
+      "threshold": 1.2
+     }
+    }
+   },
+   "hits": []
+  },
+  "D_Bから見放された目を除く": {
+   "total": {
+    "races": 10,
+    "bets": 13,
+    "hits": 0,
+    "payout": 0,
+    "roi": 0.0
+   },
+   "months": {
+    "2026-11": {
+     "bets": 13,
+     "hits": 0,
+     "payout": 0,
+     "roi": 0.0
+    }
+   },
+   "drift": {
+    "total": {
+     "bets": 13,
+     "ratio_mean": 0.945,
+     "ratio_median": 0.846,
+     "down": 0.538,
+     "ev_final_mean": 1.083,
+     "keep": 0.462,
      "threshold": 1.1
     },
     "days": {
@@ -214,6 +255,15 @@
       "ev_final_mean": 0.99,
       "keep": 0.333,
       "threshold": 1.1
+     },
+     "2026-11-25": {
+      "bets": 10,
+      "ratio_mean": 0.967,
+      "ratio_median": 0.956,
+      "down": 0.5,
+      "ev_final_mean": 1.111,
+      "keep": 0.5,
+      "threshold": 1.1
      }
     }
    },
@@ -221,26 +271,26 @@
   },
   "E_直前に下がり始めた目": {
    "total": {
-    "races": 30,
-    "bets": 215,
-    "hits": 5,
-    "payout": 23720,
-    "roi": 110.3
+    "races": 91,
+    "bets": 628,
+    "hits": 11,
+    "payout": 35450,
+    "roi": 56.4
    },
    "months": {
     "2026-11": {
-     "bets": 215,
-     "hits": 5,
-     "payout": 23720,
-     "roi": 110.3
+     "bets": 628,
+     "hits": 11,
+     "payout": 35450,
+     "roi": 56.4
     }
    },
    "drift": {
     "total": {
-     "bets": 215,
-     "ratio_mean": 1.05,
-     "ratio_median": 1.106,
-     "down": 0.27,
+     "bets": 628,
+     "ratio_mean": 1.035,
+     "ratio_median": 1.073,
+     "down": 0.311,
      "ev_final_mean": 0.0,
      "keep": 0.0,
      "threshold": 1.0
@@ -254,10 +304,67 @@
       "ev_final_mean": 0.0,
       "keep": 0.0,
       "threshold": 1.0
+     },
+     "2026-11-25": {
+      "bets": 413,
+      "ratio_mean": 1.027,
+      "ratio_median": 1.058,
+      "down": 0.332,
+      "ev_final_mean": 0.0,
+      "keep": 0.0,
+      "threshold": 1.0
      }
     }
    },
    "hits": [
+    {
+     "date": "2026-11-25",
+     "venue": "西武園",
+     "race_no": 4,
+     "combo": "7-2-5",
+     "odds_at_log": 17.1,
+     "payout": 1550
+    },
+    {
+     "date": "2026-11-25",
+     "venue": "西武園",
+     "race_no": 6,
+     "combo": "5-1-6",
+     "odds_at_log": 22.3,
+     "payout": 1890
+    },
+    {
+     "date": "2026-11-25",
+     "venue": "松山",
+     "race_no": 8,
+     "combo": "3-1-4",
+     "odds_at_log": 11.8,
+     "payout": 770
+    },
+    {
+     "date": "2026-11-25",
+     "venue": "松山",
+     "race_no": 11,
+     "combo": "5-2-3",
+     "odds_at_log": 24.6,
+     "payout": 2710
+    },
+    {
+     "date": "2026-11-25",
+     "venue": "川崎",
+     "race_no": 3,
+     "combo": "1-4-3",
+     "odds_at_log": 10.6,
+     "payout": 630
+    },
+    {
+     "date": "2026-11-25",
+     "venue": "玉野",
+     "race_no": 7,
+     "combo": "3-2-4",
+     "odds_at_log": 90.7,
+     "payout": 4180
+    },
     {
      "date": "2026-11-24",
      "venue": "西武園",
@@ -301,5 +408,5 @@
    ]
   }
  },
- "generated_at": "2026-11-25T14:26:18+09:00"
+ "generated_at": "2026-11-26T09:08:57+09:00"
 }
