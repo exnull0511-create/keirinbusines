@@ -1,1 +1,1 @@
-{"updated_at": "2026-11-28T02:14:07+09:00", "date": "2026-11-28", "state": "standby", "note": "夜の待機中（07:50に当日の準備を始める）"}
+{"updated_at": "2026-11-28T07:53:51+09:00", "date": "2026-11-28", "started_at": "2026-11-28T07:53:49+09:00", "state": "handover", "targets": 78, "left": 78, "stat": {"ok": 0, "same": 0, "no_html": 0, "no_odds": 0, "errors": 0, "judged": 0, "picks": 0}}
