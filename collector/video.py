@@ -3,6 +3,9 @@
 
   python -m collector.video run --data DIR [--days 30] [--limit 1000] [--workers 8] [--minutes 330]
 
+  無料枠でゆっくり回すとき: --workers 1 --interval 90（1日の上限に達したらその日は終了し、翌日に続きから）
+  ワークフロー video-slow が毎日 17:23 JST（無料枠の1日の回数がリセットされた後）にこの形で回す。
+
 保存先: DIR/video/YYYY-MM-DD.jsonl.gz（1行=1レース）。済んだレースは飛ばすので、何度でも続きから回せる。
 着順・S/B・決まり手は渡さない（盲検）。最終バック先頭・上位3着・S/B を確認問題として答えさせ、
 実際の結果と照合して読み取りの信頼度に使う。
@@ -118,17 +121,27 @@ def build_prompt(r: dict) -> str:
 
 
 class Gemini:
-    def __init__(self, key: str, model: str):
+    def __init__(self, key: str, model: str, interval: float = 0.0):
         self.key, self.model = key, model
         self.lock = threading.Lock()
         self.pause_until = 0.0
         self.use_schema = True
+        self.interval = interval  # 送信の最小間隔（秒）。無料枠で1分あたりの上限に当たらないように
+        self.next_send = 0.0
+        self.daily_out = False  # 1日の上限に達したら True（その日はもう送らない）
+
+    def _wait_turn(self):
+        with self.lock:
+            t = max(self.next_send, self.pause_until, time.time())
+            self.next_send = t + self.interval
+        if t > time.time():
+            time.sleep(t - time.time())
 
     def ask(self, video: bytes, prompt: str) -> tuple[dict | None, dict, str]:
         for attempt in range(8):
-            wait = self.pause_until - time.time()
-            if wait > 0:
-                time.sleep(wait)
+            if self.daily_out:
+                return None, {}, "daily_quota"
+            self._wait_turn()
             gen = {"temperature": 0.2, "mediaResolution": "MEDIA_RESOLUTION_HIGH", "responseMimeType": "application/json"}
             if self.use_schema:
                 gen["responseJsonSchema"] = SCHEMA
@@ -152,6 +165,14 @@ class Gemini:
                 print("  回答形式の指定が使えないモデルなので、指定なしに切り替え", flush=True)
                 self.use_schema = False
                 continue
+            if r.status_code == 429:
+                # どの上限に当たったかを残す（1日の上限なら、その日は打ち切って翌日に続きから）
+                quota = ",".join(sorted(set(re.findall(r'"quotaId":\s*"([^"]+)"', r.text)))) or r.text[:200].replace("\n", " ")
+                if "PerDay" in quota:
+                    print(f"  gemini 1日の上限に達したので今日は終了（{quota}）", flush=True)
+                    self.daily_out = True
+                    return None, {}, "daily_quota"
+                print(f"  gemini 429（{quota}）", flush=True)
             if r.status_code in (429, 500, 503):
                 back = min(60 * (attempt + 1), 300)
                 with self.lock:  # 全ワーカーでまとめて待つ
@@ -234,7 +255,7 @@ def done_ids(data: Path) -> set[str]:
 def run(a):
     data = Path(a.data)
     (data / "video").mkdir(parents=True, exist_ok=True)
-    gem = Gemini(os.environ["GEMINI_API_KEY"], a.model)
+    gem = Gemini(os.environ["GEMINI_API_KEY"], a.model, a.interval)
     done = done_ids(data)
     todo = [r for r in candidates(data, a.days) if r["race_id"] not in done
             and int(r["race_id"]) % a.shards == a.shard][: a.limit]
@@ -255,7 +276,7 @@ def run(a):
                 since_push[0] = 0
 
     def work(r: dict):
-        if time.time() > t_end:
+        if time.time() > t_end or gem.daily_out:
             return
         sess = requests.Session()
         sess.headers.update({"User-Agent": UA, "Referer": "https://keirin.kdreams.jp/"})
@@ -272,6 +293,8 @@ def run(a):
             stats["skip"] += 1
             return
         pred, usage, err = gem.ask(vid, build_prompt(r))
+        if err == "daily_quota":  # 記録しない（翌日に続きから回す）
+            return
         t = truth(r)
         c = check(pred, t)
         save({**base, "video_url": url, "result": pred, "usage": usage, "error": err or None, "truth": t, "check": c}, r["date"])
@@ -286,7 +309,7 @@ def run(a):
 
     with cf.ThreadPoolExecutor(a.workers) as ex:
         list(ex.map(work, todo))
-    print("完了", stats, flush=True)
+    print("完了", stats, "（1日の上限で打ち切り）" if gem.daily_out else "", flush=True)
 
 
 def main(argv=None):
@@ -297,6 +320,7 @@ def main(argv=None):
     q.add_argument("--days", type=int, default=30)
     q.add_argument("--limit", type=int, default=1000)
     q.add_argument("--workers", type=int, default=1)
+    q.add_argument("--interval", type=float, default=0, help="Gemini への送信の最小間隔（秒）")
     q.add_argument("--minutes", type=float, default=330)
     q.add_argument("--push-every", type=int, default=20)
     q.add_argument("--shard", type=int, default=0)

@@ -1,0 +1,39 @@
+name: video-slow
+# 映像分析を Gemini の無料枠でゆっくり回す（支払い設定なしで始めるため）。
+# 1本ずつ90秒おきに送り、1日の上限に達したらその日は終了。済んだレースは飛ばすので、毎日続きから進む。
+on:
+  schedule:
+    - cron: "23 8 * * *"   # 毎日 17:23 JST（無料枠の1日の回数は太平洋時間の0時＝日本の17時ごろにリセット）
+  workflow_dispatch:
+    inputs:
+      days: { default: "30", description: "何日前までのレースを対象にするか" }
+      limit: { default: "300", description: "1回の上限レース数" }
+      interval: { default: "90", description: "送信の間隔（秒）" }
+
+permissions:
+  contents: write
+
+concurrency:
+  group: video-slow
+  cancel-in-progress: false
+
+jobs:
+  video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install requests && sudo apt-get install -y -qq ffmpeg
+      - run: bash tools/data_branch.sh checkout
+      - run: |
+          python -m collector.video run --data data --minutes 320 --workers 1 --push-every 10 \
+            --days "${{ github.event.inputs.days || '30' }}" \
+            --limit "${{ github.event.inputs.limit || '300' }}" \
+            --interval "${{ github.event.inputs.interval || '90' }}"
+      - if: always()
+        run: bash tools/data_branch.sh push "video slow"
