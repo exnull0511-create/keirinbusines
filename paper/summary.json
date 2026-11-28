@@ -1,17 +1,17 @@
 {
- "updated_from": "2026-11-27",
+ "updated_from": "2026-11-28",
  "rules": {
   "A_50-300倍_期待値1.2": {
    "total": {
-    "races": 28,
-    "bets": 33,
+    "races": 29,
+    "bets": 34,
     "hits": 0,
     "payout": 0,
     "roi": 0.0
    },
    "months": {
     "2026-11": {
-     "bets": 33,
+     "bets": 34,
      "hits": 0,
      "payout": 0,
      "roi": 0.0
@@ -19,12 +19,12 @@
    },
    "drift": {
     "total": {
-     "bets": 26,
-     "ratio_mean": 0.826,
-     "ratio_median": 0.813,
-     "down": 0.731,
-     "ev_final_mean": 1.051,
-     "keep": 0.385,
+     "bets": 27,
+     "ratio_mean": 0.835,
+     "ratio_median": 0.874,
+     "down": 0.704,
+     "ev_final_mean": 1.061,
+     "keep": 0.407,
      "threshold": 1.2
     },
     "days": {
@@ -90,6 +90,15 @@
       "ev_final_mean": 0.74,
       "keep": 0.0,
       "threshold": 1.2
+     },
+     "2026-11-27": {
+      "bets": 1,
+      "ratio_mean": 1.062,
+      "ratio_median": 1.062,
+      "down": 0.0,
+      "ev_final_mean": 1.329,
+      "keep": 1.0,
+      "threshold": 1.2
      }
     }
    },
@@ -97,28 +106,28 @@
   },
   "B_10-300倍_期待値1.1": {
    "total": {
-    "races": 95,
-    "bets": 179,
-    "hits": 1,
-    "payout": 1700,
-    "roi": 9.5
+    "races": 106,
+    "bets": 194,
+    "hits": 2,
+    "payout": 2140,
+    "roi": 11.0
    },
    "months": {
     "2026-11": {
-     "bets": 179,
-     "hits": 1,
-     "payout": 1700,
-     "roi": 9.5
+     "bets": 194,
+     "hits": 2,
+     "payout": 2140,
+     "roi": 11.0
     }
    },
    "drift": {
     "total": {
-     "bets": 149,
-     "ratio_mean": 0.916,
-     "ratio_median": 0.981,
-     "down": 0.537,
-     "ev_final_mean": 1.062,
-     "keep": 0.557,
+     "bets": 164,
+     "ratio_mean": 0.903,
+     "ratio_median": 0.978,
+     "down": 0.555,
+     "ev_final_mean": 1.046,
+     "keep": 0.543,
      "threshold": 1.1
     },
     "days": {
@@ -184,10 +193,27 @@
       "ev_final_mean": 0.998,
       "keep": 0.571,
       "threshold": 1.1
+     },
+     "2026-11-27": {
+      "bets": 15,
+      "ratio_mean": 0.776,
+      "ratio_median": 0.753,
+      "down": 0.733,
+      "ev_final_mean": 0.892,
+      "keep": 0.4,
+      "threshold": 1.1
      }
     }
    },
    "hits": [
+    {
+     "date": "2026-11-27",
+     "venue": "久留米",
+     "race_no": 4,
+     "combo": "6-2-1",
+     "odds_at_log": 11.5,
+     "payout": 440
+    },
     {
      "date": "2026-11-23",
      "venue": "奈良",
@@ -200,15 +226,15 @@
   },
   "C_Aから見放された目を除く": {
    "total": {
-    "races": 3,
-    "bets": 4,
+    "races": 4,
+    "bets": 5,
     "hits": 0,
     "payout": 0,
     "roi": 0.0
    },
    "months": {
     "2026-11": {
-     "bets": 4,
+     "bets": 5,
      "hits": 0,
      "payout": 0,
      "roi": 0.0
@@ -216,12 +242,12 @@
    },
    "drift": {
     "total": {
-     "bets": 4,
-     "ratio_mean": 0.685,
-     "ratio_median": 0.594,
-     "down": 0.75,
-     "ev_final_mean": 0.925,
-     "keep": 0.25,
+     "bets": 5,
+     "ratio_mean": 0.761,
+     "ratio_median": 0.751,
+     "down": 0.6,
+     "ev_final_mean": 1.006,
+     "keep": 0.4,
      "threshold": 1.2
     },
     "days": {
@@ -242,6 +268,15 @@
       "ev_final_mean": 0.74,
       "keep": 0.0,
       "threshold": 1.2
+     },
+     "2026-11-27": {
+      "bets": 1,
+      "ratio_mean": 1.062,
+      "ratio_median": 1.062,
+      "down": 0.0,
+      "ev_final_mean": 1.329,
+      "keep": 1.0,
+      "threshold": 1.2
      }
     }
    },
@@ -249,28 +284,28 @@
   },
   "D_Bから見放された目を除く": {
    "total": {
-    "races": 17,
-    "bets": 27,
-    "hits": 0,
-    "payout": 0,
-    "roi": 0.0
+    "races": 27,
+    "bets": 41,
+    "hits": 1,
+    "payout": 440,
+    "roi": 10.7
    },
    "months": {
     "2026-11": {
-     "bets": 27,
-     "hits": 0,
-     "payout": 0,
-     "roi": 0.0
+     "bets": 41,
+     "hits": 1,
+     "payout": 440,
+     "roi": 10.7
     }
    },
    "drift": {
     "total": {
-     "bets": 27,
-     "ratio_mean": 0.88,
+     "bets": 41,
+     "ratio_mean": 0.852,
      "ratio_median": 0.854,
-     "down": 0.556,
-     "ev_final_mean": 1.025,
-     "keep": 0.481,
+     "down": 0.61,
+     "ev_final_mean": 0.988,
+     "keep": 0.463,
      "threshold": 1.1
     },
     "days": {
@@ -300,33 +335,51 @@
       "ev_final_mean": 0.97,
       "keep": 0.5,
       "threshold": 1.1
+     },
+     "2026-11-27": {
+      "bets": 14,
+      "ratio_mean": 0.797,
+      "ratio_median": 0.834,
+      "down": 0.714,
+      "ev_final_mean": 0.917,
+      "keep": 0.429,
+      "threshold": 1.1
      }
     }
    },
-   "hits": []
+   "hits": [
+    {
+     "date": "2026-11-27",
+     "venue": "久留米",
+     "race_no": 4,
+     "combo": "6-2-1",
+     "odds_at_log": 11.5,
+     "payout": 440
+    }
+   ]
   },
   "E_直前に下がり始めた目": {
    "total": {
-    "races": 165,
-    "bets": 1281,
-    "hits": 16,
-    "payout": 52300,
-    "roi": 40.8
+    "races": 239,
+    "bets": 1871,
+    "hits": 23,
+    "payout": 82630,
+    "roi": 44.2
    },
    "months": {
     "2026-11": {
-     "bets": 1281,
-     "hits": 16,
-     "payout": 52300,
-     "roi": 40.8
+     "bets": 1871,
+     "hits": 23,
+     "payout": 82630,
+     "roi": 44.2
     }
    },
    "drift": {
     "total": {
-     "bets": 1281,
-     "ratio_mean": 1.027,
-     "ratio_median": 1.068,
-     "down": 0.326,
+     "bets": 1871,
+     "ratio_mean": 1.02,
+     "ratio_median": 1.063,
+     "down": 0.342,
      "ev_final_mean": 0.0,
      "keep": 0.0,
      "threshold": 1.0
@@ -358,10 +411,75 @@
       "ev_final_mean": 0.0,
       "keep": 0.0,
       "threshold": 1.0
+     },
+     "2026-11-27": {
+      "bets": 590,
+      "ratio_mean": 1.004,
+      "ratio_median": 1.057,
+      "down": 0.376,
+      "ev_final_mean": 0.0,
+      "keep": 0.0,
+      "threshold": 1.0
      }
     }
    },
    "hits": [
+    {
+     "date": "2026-11-27",
+     "venue": "佐世保",
+     "race_no": 3,
+     "combo": "1-7-4",
+     "odds_at_log": 49.2,
+     "payout": 4960
+    },
+    {
+     "date": "2026-11-27",
+     "venue": "小松島",
+     "race_no": 4,
+     "combo": "1-5-4",
+     "odds_at_log": 34.3,
+     "payout": 1880
+    },
+    {
+     "date": "2026-11-27",
+     "venue": "平塚",
+     "race_no": 2,
+     "combo": "7-3-1",
+     "odds_at_log": 28.4,
+     "payout": 3310
+    },
+    {
+     "date": "2026-11-27",
+     "venue": "久留米",
+     "race_no": 3,
+     "combo": "3-1-6",
+     "odds_at_log": 52.6,
+     "payout": 2650
+    },
+    {
+     "date": "2026-11-27",
+     "venue": "久留米",
+     "race_no": 4,
+     "combo": "6-2-1",
+     "odds_at_log": 11.5,
+     "payout": 440
+    },
+    {
+     "date": "2026-11-27",
+     "venue": "松戸",
+     "race_no": 4,
+     "combo": "2-3-6",
+     "odds_at_log": 81.8,
+     "payout": 9630
+    },
+    {
+     "date": "2026-11-27",
+     "venue": "久留米",
+     "race_no": 9,
+     "combo": "1-3-2",
+     "odds_at_log": 71.3,
+     "payout": 7460
+    },
     {
      "date": "2026-11-26",
      "venue": "小松島",
@@ -493,5 +611,5 @@
    ]
   }
  },
- "generated_at": "2026-11-27T13:11:01+09:00"
+ "generated_at": "2026-11-28T09:11:45+09:00"
 }
